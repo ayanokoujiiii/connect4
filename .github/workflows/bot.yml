@@ -1,0 +1,43 @@
+# Runs the دوز Telegram bot (@Cheshmha_Bbot) on GitHub Actions.
+# The bot is a stdlib-only Python poller, so the runner needs nothing
+# except Python. The bot token comes from the repository secret
+# CONNECT4_BOT_TOKEN (Settings -> Secrets and variables -> Actions).
+# A run lives at most ~5h (GitHub's 6h job cap), so the schedule restarts
+# it; games + the getUpdates offset survive restarts in the state cache.
+name: doz-bot
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */5 * * *"
+concurrency:
+  group: doz-bot
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 290
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Restore game state
+        uses: actions/cache/restore@v4
+        with:
+          path: state.json
+          key: doz-state-${{ github.run_id }}
+          restore-keys: |
+            doz-state-
+      - name: Run the bot
+        env:
+          CONNECT4_BOT_TOKEN: ${{ secrets.CONNECT4_BOT_TOKEN }}
+          CONNECT4_BOT_USERNAME: Cheshmha_Bbot
+        run: python3 bot.py
+      - name: Save game state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: doz-state-${{ github.run_id }}
