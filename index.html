@@ -19,8 +19,8 @@
   }
   .wrap { width: 100%; max-width: 480px; }
   .screen { display: none; }
-  .screen.on { display: block; animation: fade .3s ease; }
-  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .screen.on { display: block; animation: fade .38s cubic-bezier(.2,.9,.3,1.1); }
+  @keyframes fade { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
   h1 { font-size: 28px; font-weight: 900; text-align: center; margin: 2px 0; text-shadow: 0 3px 14px rgba(0,0,0,.5); }
   .sub { text-align: center; color: #cfc8ff; font-size: 14px; margin-bottom: 14px; }
   .card {
@@ -48,7 +48,9 @@
     color: #241a00; background: linear-gradient(180deg, #ffe680, #ffc700);
     border: none; border-radius: 18px; cursor: pointer;
     box-shadow: 0 6px 0 #a67c00, 0 12px 24px rgba(0,0,0,.45); margin-top: 6px;
+    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
   }
+  .bigbtn:hover { filter: brightness(1.07); }
   .bigbtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a67c00; }
   .bigbtn.ghost {
     background: rgba(255,255,255,.12); color: #fff; font-size: 18px;
@@ -60,17 +62,21 @@
     width: 104px; height: 104px; font-size: 52px; border-radius: 24px; cursor: pointer;
     background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.07));
     border: 2px solid rgba(255,255,255,.35); box-shadow: 0 8px 20px rgba(0,0,0,.4);
-    transition: transform .12s ease;
+    transition: transform .12s ease, background .12s ease;
   }
   .rps:active { transform: scale(.93); }
-  .rps.picked { border-color: #ffd23e; background: linear-gradient(180deg, #ffe680, #ffc700); }
+  .rps.picked { border-color: #ffd23e; background: linear-gradient(180deg, #ffe680, #ffc700); animation: rpsPop .32s ease; }
+  @keyframes rpsPop { 0% { transform: scale(1); } 45% { transform: scale(1.14) rotate(-4deg); } 100% { transform: scale(1); } }
   .rps:disabled { opacity: .45; }
   .scorebar { display: flex; gap: 10px; margin-bottom: 10px; }
   .player {
     flex: 1; border-radius: 18px; padding: 10px 12px; display: flex; gap: 10px; align-items: center;
     background: rgba(255,255,255,.08); border: 2px solid transparent; font-size: 17px; font-weight: 700;
   }
-  .player.active { border-color: #ffd23e; background: rgba(255,210,62,.14); box-shadow: 0 0 18px rgba(255,210,62,.25); }
+  .player.active { border-color: #ffd23e; background: rgba(255,210,62,.14); animation: activeGlow 1.2s ease-in-out infinite alternate; }
+  @keyframes activeGlow { from { box-shadow: 0 0 8px rgba(255,210,62,.18); } to { box-shadow: 0 0 26px rgba(255,210,62,.55); } }
+  .player.active .pdot { animation: dotPulse 1s ease-in-out infinite alternate; }
+  @keyframes dotPulse { from { transform: scale(1); } to { transform: scale(1.18); } }
   .player small { display: block; font-size: 13px; color: #cfc8ff; font-weight: 400; }
   .pdot { width: 34px; height: 34px; border-radius: 50%; flex: none;
     box-shadow: inset -2px -4px 7px rgba(0,0,0,.35), inset 2px 4px 7px rgba(255,255,255,.5), 0 3px 8px rgba(0,0,0,.5); }
@@ -79,23 +85,32 @@
     background: rgba(255,210,62,.16); border: 2px solid #ffd23e; margin-bottom: 12px;
   }
   .board {
-    background: linear-gradient(180deg, #3b4fd8, #232f8f);
+    background: linear-gradient(180deg, #4658e8, #232f8f 55%, #1a2368);
     border-radius: 26px; padding: 10px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
-    box-shadow: 0 14px 34px rgba(0,0,0,.55), inset 0 2px 0 rgba(255,255,255,.25), inset 0 -6px 14px rgba(0,0,0,.3);
+    box-shadow: 0 18px 40px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.3), inset 0 -8px 18px rgba(0,0,0,.4);
+    border-bottom: 5px solid rgba(0,0,0,.4);
   }
   .cell {
     aspect-ratio: 1; border-radius: 50%; background: #0d1440; border: none; padding: 0;
-    box-shadow: inset 0 5px 10px rgba(0,0,0,.7); cursor: pointer; position: relative;
+    box-shadow: inset 0 6px 12px rgba(0,0,0,.75), inset 0 -2px 5px rgba(255,255,255,.12); cursor: pointer; position: relative;
     display: flex; align-items: center; justify-content: center;
   }
   .disc {
-    width: 88%; height: 88%; border-radius: 50%;
-    box-shadow: inset -3px -6px 9px rgba(0,0,0,.35), inset 3px 6px 9px rgba(255,255,255,.5), 0 4px 8px rgba(0,0,0,.45);
+    width: 88%; height: 88%; border-radius: 50%; position: relative;
+    box-shadow: inset -3px -6px 9px rgba(0,0,0,.35), inset 3px 6px 9px rgba(255,255,255,.5), 0 5px 10px rgba(0,0,0,.5);
   }
-  .disc.new { animation: drop .4s cubic-bezier(.2,.9,.3,1.15); }
-  @keyframes drop { from { transform: translateY(-280px) scale(.9); opacity: .4; } to { transform: translateY(0) scale(1); opacity: 1; } }
-  .disc.win { outline: 4px solid #ffd23e; outline-offset: 2px; animation: winpulse .6s infinite alternate; }
-  @keyframes winpulse { from { transform: scale(1); } to { transform: scale(1.14); } }
+  .disc::after {  /* glossy 3D highlight */
+    content: ""; position: absolute; left: 12%; top: 7%; width: 48%; height: 34%;
+    border-radius: 50%; background: radial-gradient(ellipse at center, rgba(255,255,255,.9), rgba(255,255,255,0) 70%);
+  }
+  .disc.new { animation: drop .45s cubic-bezier(.2,.9,.3,1.15); }
+  @keyframes drop {
+    0% { transform: translateY(-320px) scale(.92); opacity: .3; }
+    70% { transform: translateY(0) scale(1.07); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  .disc.win { outline: 4px solid #ffd23e; outline-offset: 2px; animation: winpulse .55s ease-in-out infinite alternate; }
+  @keyframes winpulse { from { transform: scale(1); filter: brightness(1); } to { transform: scale(1.16); filter: brightness(1.3); } }
   /* NUMBERS — BELOW the board, big */
   .colnums { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
   .colnums button {
@@ -103,6 +118,7 @@
     background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.08));
     border: 2px solid rgba(255,255,255,.35); border-radius: 16px; cursor: pointer;
     box-shadow: 0 5px 14px rgba(0,0,0,.4);
+    transition: transform .12s ease, background .12s ease, color .12s ease;
   }
   .colnums button:active { transform: scale(.94); background: linear-gradient(180deg, #ffe680, #ffc700); color: #241a00; }
   .colnums button:disabled { opacity: .35; }
@@ -137,6 +153,27 @@
     border-radius: 14px; padding: 10px; margin-bottom: 12px;
   }
   .warn.show { display: block; }
+  .emoji-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+  .emoji-row button {
+    font-size: 30px; width: 52px; height: 52px; border-radius: 14px; cursor: pointer;
+    background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.2);
+    transition: transform .12s ease;
+  }
+  .emoji-row button:active { transform: scale(1.3) rotate(-6deg); }
+  .emoji-pop {
+    position: fixed; left: 50%; top: 38%; transform: translate(-50%,-50%);
+    font-size: 96px; z-index: 60; pointer-events: none; display: none;
+    text-shadow: 0 8px 30px rgba(0,0,0,.6); text-align: center; line-height: 1.1;
+  }
+  .emoji-pop.show { display: block; animation: emojiFloat 2.2s ease forwards; }
+  .emoji-pop small { display: block; font-size: 18px; font-weight: 900; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+  @keyframes emojiFloat {
+    0% { opacity: 0; transform: translate(-50%,-50%) scale(.4); }
+    18% { opacity: 1; transform: translate(-50%,-50%) scale(1.15); }
+    30% { transform: translate(-50%,-50%) scale(1); }
+    70% { opacity: 1; transform: translate(-50%,-58%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%,-110%) scale(1.05); }
+  }
   .friend {
     display: flex; gap: 10px; align-items: center; padding: 10px 4px;
     border-bottom: 1px solid rgba(255,255,255,.12);
@@ -164,6 +201,7 @@
 <body>
 <audio id="bgm" src="nocturne20.mp3" loop preload="auto"></audio>
 <button class="music-toggle" id="music-toggle" aria-label="موسیقی">🔊</button>
+<div class="emoji-pop" id="emoji-pop"></div>
 <div class="wrap">
   <div class="notice" id="notice"></div>
 
@@ -308,6 +346,7 @@
       <button class="bigbtn ghost" id="resign">🏳️ تسلیم</button>
       <button class="bigbtn ghost" id="to-home">🏠 منوی اصلی</button>
     </div>
+    <div class="emoji-row" id="emoji-row"></div>
     <div class="hint">روی عدد زیر هر ستون بزن — یا مستقیم روی همون ستون — مهره همون‌جا می‌افته.<br>۴ مهره پشت سر هم — عمودی، افقی یا مورب — یعنی برد. 🏆</div>
   </div>
 
@@ -385,6 +424,9 @@ let setupOpen = false;      // the user is on the setup screen on purpose —
                             // the poll must NOT yank them back to the game
 let turnDeadline = 0;       // unix time the player to move must drop by
 let turnWarnings = 0;       // late answers on the current turn (2 = lose)
+let lastEmojiAt = 0, lastEmojiGame = "";  // the latest reaction shown
+let myEmojiPending = false;  // I already showed mine — don't replay it
+let emojiCooldownUntil = 0;
 let lastResignGame = "";    // game id the resign button was reset for
 let home = null;            // last home data from the API
 let openGame = null;        // my latest open game, if any (continue button)
@@ -434,20 +476,41 @@ async function apiCall(path, body) {
 }
 const apiAction = payload => apiCall("/api/action", { payload });
 async function refreshGame() {
+  const seq = pollGen;  // a navigation while we wait discards this answer
   const d = await apiCall("/api/game", gameId ? { g: gameId } : {});
+  if (seq !== pollGen) return false;
   if (d.ok && d.game) { gameId = d.game.id; applyGame(d.game); showNotice(null); return true; }
   if (d.error && !d.error.startsWith("ارتباط")) showNotice(d.error);
   else if (!d.ok) showNotice(d.error || null);
   return false;
 }
 async function refreshHome() {
+  const seq = pollGen;
   const d = await apiCall("/api/home", {});
+  if (seq !== pollGen) return false;
   if (d.ok && d.home) { home = d.home; renderHome(); showNotice(null); return true; }
   if (d.error) showNotice(d.error);
   return false;
 }
-function setPoll(fn, ms) { stopPoll(); pollTimer = setInterval(fn, ms); }
-function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+/* The poll never overlaps itself: the old timer fired every second even
+   when the previous fetch was still in flight (slow LTE), so requests
+   piled up, old answers overwrote new state, and taps felt late —
+   Mehdi, 2026-11-17. Now each tick waits for its fetch, then schedules
+   the next one; a navigation bumps pollGen and every in-flight answer
+   from before it is thrown away instead of yanking the screen back. */
+let pollGen = 0;
+function setPoll(fn, ms) {
+  stopPoll();
+  const gen = ++pollGen;
+  const tick = async () => {
+    if (gen !== pollGen) return;
+    try { await fn(); } catch (e) {}
+    if (gen !== pollGen) return;
+    pollTimer = setTimeout(tick, ms);
+  };
+  pollTimer = setTimeout(tick, ms);
+}
+function stopPoll() { pollGen++; if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
 
 /* ---------- game state -> screen ---------- */
 function applyGame(g) {
@@ -482,6 +545,15 @@ function applyGame(g) {
   myColor = me === 1 ? color1 : (me === 2 ? color2 : myColor);
   if (me === 1) p1name = (tgUser && tgUser.first_name) || p1name;
   if (me === 2) p2name = (tgUser && tgUser.first_name) || p2name;
+  // A new emoji reaction from either side: show it big and animated,
+  // once. My own I already showed when I tapped it — don't replay it.
+  if (g.id !== lastEmojiGame) { lastEmojiGame = g.id; lastEmojiAt = 0; myEmojiPending = false; }
+  if (g.emoji && g.emoji.at > lastEmojiAt) {
+    const isMine = g.emoji.slot === me;
+    lastEmojiAt = g.emoji.at;
+    if (!isMine || !myEmojiPending) showEmoji(g.emoji.slot, g.emoji.emoji);
+    if (isMine) myEmojiPending = false;
+  }
   refreshPalettes();
   route();
 }
@@ -793,7 +865,7 @@ function render() {
   $("p1box").classList.toggle("active", turn === 1 && !over);
   $("p2box").classList.toggle("active", turn === 2 && !over);
   $("turn").textContent = over ? "🏁 بازی تمام شد" : ("نوبت " + (turn === 1 ? p1name : p2name) + " است" + (turnDeadline ? " — " + fa(Math.max(0, Math.ceil(turnDeadline - Date.now() / 1000))) + " ثانیه" : ""));
-  $("warn").textContent = (!over && turnWarnings > 0) ? "⚠️ تذکر: ۳۰ ثانیه گذشت — اگه این نوبت دوباره دیر بشه، این دور رو باختی!" : "";
+  $("warn").textContent = (!over && turnWarnings > 0) ? "⚠️ تذکر: ۴۵ ثانیه گذشت — اگه این نوبت دوباره دیر بشه، این دور رو باختی!" : "";
   $("warn").classList.toggle("show", !over && turnWarnings > 0);
   // The poll rebuilds the board every tick — rebuilding the DOM replayed
   // the last disc's drop animation each time, so while waiting for the
@@ -839,9 +911,16 @@ function finish(winner) {
 }
 async function drop(col) {
   if (over) return;
-  if (lowestEmpty(col) === -1) { haptic(); return; }
+  const row = lowestEmpty(col);
+  if (row === -1) { haptic(); return; }
   if (!isTG) return; // two-player game: moves go through the server only
   if (game && game.turn !== me) { haptic(); return; } // not my turn
+  // Optimistic: the disc lands NOW, on my screen, before the server
+  // answers (Mehdi, 2026-11-17 — waiting for the round trip made every
+  // drop feel late). The server's answer reconciles the board.
+  haptic();
+  board[row][col] = me; lastMove = [row, col, me]; turn = me === 1 ? 2 : 1;
+  render();
   const d = await apiAction({ action: "drop", col, g: gameId });
   if (d.game) applyGame(d.game);
   else if (d.error) showNotice(d.error);
@@ -865,15 +944,47 @@ $("setup-home").onclick = () => goHome();
 $("to-home").onclick = () => goHome();
 async function goHome() {
   // Back to the main menu: the game keeps living on the server (the
-  // opponent may still move) — home offers to continue it.
+  // opponent may still move) — home offers to continue it. The open
+  // game is fetched in parallel instead of blocking the home screen.
   setupOpen = false;
   stopPoll();
   show("scr-home");
-  const d = await apiCall("/api/game", {});
-  openGame = (d.ok && d.game && (d.game.status === "rps" || d.game.status === "playing")) ? d.game : null;
+  const seq = pollGen;
+  const g = apiCall("/api/game", {});
   await refreshHome();
+  const d = await g;
+  if (seq !== pollGen) return;
+  openGame = (d.ok && d.game && (d.game.status === "rps" || d.game.status === "playing")) ? d.game : null;
+  renderHome();
   setPoll(refreshHome, 20000);
 }
+/* ---------- emoji reactions: taunt your friend mid-game ---------- */
+const EMOJIS = ["😂", "😭", "😈", "😎", "🔥", "😱", "🤔", "😜", "👏", "💪"];
+EMOJIS.forEach(e => {
+  const b = document.createElement("button");
+  b.textContent = e; b.type = "button";
+  b.onclick = () => sendEmoji(e);
+  $("emoji-row").appendChild(b);
+});
+function showEmoji(slot, e) {
+  const pop = $("emoji-pop");
+  pop.innerHTML = e + "<small>" + (slot === 1 ? p1name : p2name) + "</small>";
+  pop.classList.remove("show"); void pop.offsetWidth;  // restart the animation
+  pop.classList.add("show");
+  setTimeout(() => pop.classList.remove("show"), 2300);
+}
+async function sendEmoji(e) {
+  if (!isTG || !gameId) return;
+  if (Date.now() < emojiCooldownUntil) return;  // no spam floods
+  emojiCooldownUntil = Date.now() + 3000;
+  myEmojiPending = true;
+  showEmoji(me, e);
+  haptic();
+  const d = await apiAction({ action: "emoji", emoji: e, g: gameId });
+  if (d.game) applyGame(d.game);
+  else if (d.error) showNotice(d.error);
+}
+
 let resignArm = null;
 $("resign").onclick = async () => {
   if (!isTG || over) return;
