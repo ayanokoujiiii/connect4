@@ -453,7 +453,7 @@ function route() {
     $("rps-sub").textContent = myName() + "، یکی رو انتخاب کن — حریفت تو گوشی خودش انتخاب می‌کنه و بات برنده رو معلوم می‌کنه";
     updateRpsStatus();
     show("scr-rps");
-    setPoll(refreshGame, 2000);
+    setPoll(refreshGame, 1000);
     return;
   }
   // playing | finished
@@ -461,7 +461,7 @@ function route() {
   render();
   if (over) finish(game.winner);
   show("scr-game");
-  setPoll(refreshGame, 2000);
+  setPoll(refreshGame, 1000);
 }
 function updateRpsStatus() {
   if (!game) return;
@@ -724,6 +724,7 @@ function confetti() {
     }
   });
 }
+let lastBoardKey = "";
 function render() {
   $("p1name").textContent = p1name; $("p2name").textContent = p2name;
   $("s1").textContent = fa(score1); $("s2").textContent = fa(score2);
@@ -732,6 +733,14 @@ function render() {
   $("p1box").classList.toggle("active", turn === 1 && !over);
   $("p2box").classList.toggle("active", turn === 2 && !over);
   $("turn").textContent = over ? "🏁 بازی تمام شد" : ("نوبت " + (turn === 1 ? p1name : p2name) + " است");
+  // The poll rebuilds the board every tick — rebuilding the DOM replayed
+  // the last disc's drop animation each time, so while waiting for the
+  // opponent the discs kept "jumping" (Mehdi, 2026-11-16). Rebuild only
+  // when the board actually changed; a tap on a live button also stops
+  // being eaten by a rebuild mid-tap.
+  const bkey = board.map(r => r.join("")).join("") + "|" + (over ? 1 : 0) + "|" + winCells.length + "|" + (lastMove ? lastMove.join(",") : "");
+  if (bkey === lastBoardKey) return;
+  lastBoardKey = bkey;
   const b = $("board"); b.innerHTML = "";
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const cell = document.createElement("button");
