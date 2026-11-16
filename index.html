@@ -436,6 +436,14 @@ function route() {
   }
   if (game.status === "rps") {
     waitingMode = null;
+    // Tie recovery: if my throw was cleared (a tie empties rps_done) but
+    // the buttons stayed disabled, I am stuck on "waiting for opponent"
+    // forever — re-enable them and say so (Mehdi's game 1a49bee4, 2026-11-16).
+    const iThrew = (game.rps_done || []).includes(me);
+    if (!iThrew && document.querySelector("#rps-row .rps:disabled")) {
+      $("rps-picked").textContent = "🤝 مساوی شد — دوباره انتخاب کن!";
+      document.querySelectorAll("#rps-row .rps").forEach(b => { b.classList.remove("picked"); b.disabled = false; });
+    }
     $("rps-sub").textContent = myName() + "، یکی رو انتخاب کن — حریفت تو گوشی خودش انتخاب می‌کنه و بات برنده رو معلوم می‌کنه";
     updateRpsStatus();
     show("scr-rps");
@@ -673,8 +681,14 @@ document.querySelectorAll("#rps-row .rps").forEach(btn => {
     btn.classList.add("picked"); haptic();
     const d = await apiAction({ action: "rps", choice: v, g: gameId });
     if (d.game) applyGame(d.game);
-    $("rps-picked").textContent = "✓ انتخاب تو ثبت شد — منتظر حریف…";
-    document.querySelectorAll("#rps-row .rps").forEach(b => b.disabled = true);
+    if (d.game && d.game.status === "rps" && !(d.game.rps_done || []).includes(me)) {
+      // Tie — the server cleared both throws. Throw again, don't get stuck.
+      $("rps-picked").textContent = "🤝 مساوی شد — دوباره انتخاب کن!";
+      document.querySelectorAll("#rps-row .rps").forEach(b => { b.classList.remove("picked"); b.disabled = false; });
+    } else {
+      $("rps-picked").textContent = "✓ انتخاب تو ثبت شد — منتظر حریف…";
+      document.querySelectorAll("#rps-row .rps").forEach(b => b.disabled = true);
+    }
     updateRpsStatus();
   };
 });
