@@ -404,7 +404,13 @@ function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = nul
 /* ---------- game state -> screen ---------- */
 function applyGame(g) {
   game = g;
-  if (g.me) me = g.me;
+  // Slot values are NUMBERS everywhere (turn, winner, me, rps_done).
+  // game_public used to return me as the string "1" — and the client's
+  // strict check `game.turn !== me` (1 !== "1") then blocked EVERY drop
+  // silently (Mehdi's game 97bc9506: board rendered, turn banner right,
+  // taps did nothing, 2026-11-16). Normalize defensively too.
+  if (g.me) me = +g.me;
+  if (Array.isArray(g.rps_done)) game.rps_done = g.rps_done.map(Number);
   p1name = (g.players["1"] && g.players["1"].name) || "بازیکن ۱";
   p2name = (g.players["2"] && g.players["2"].name) || "بازیکن ۲";
   color1 = (g.players["1"] && g.players["1"].color) || "blue";
@@ -427,7 +433,7 @@ function applyGame(g) {
 function route() {
   if (!game) { show("scr-home"); return; }
   if (game.status === "joining") {
-    if (game.me === 1) { $("invite-link").value = inviteLink(game.id); show("scr-invite"); setPoll(refreshGame, 2000); }
+    if (me === 1) { $("invite-link").value = inviteLink(game.id); show("scr-invite"); setPoll(refreshGame, 2000); }
     else if (game.invited) {
       $("join-text").textContent = (game.players["1"] ? game.players["1"].name : "یه دوست") + " تو رو به بازی دوز دعوت کرده 🎮";
       show("scr-join");
@@ -459,7 +465,7 @@ function route() {
 }
 function updateRpsStatus() {
   if (!game) return;
-  const other = me === 1 ? "2" : "1";
+  const other = me === 1 ? 2 : 1;
   if ((game.rps_done || []).includes(other)) $("rps-result").textContent = "✓ حریفت انتخاب کرد — منتظر اعلام برنده…";
   else $("rps-result").textContent = "";
 }
