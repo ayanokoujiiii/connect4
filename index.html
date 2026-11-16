@@ -133,8 +133,43 @@
     <div class="hint">تو بازی واقعی، صفحه از تلگرام می‌فهمه تو کی هستی و این سوال رو نمی‌پرسه.</div>
   </div>
 
+  <!-- ============ HOME: the main page — every option lives here ============ -->
+  <div class="screen on" id="scr-home">
+    <h1>🎮 دوز</h1>
+    <div class="sub">هر بازیکن با گوشی خودش بازی می‌کنه</div>
+    <div class="card">
+      <h2>🎨 رنگ مهره‌ی من</h2>
+      <div class="palette" id="pal-home"></div>
+    </div>
+    <button class="bigbtn" id="mode-bot">🤖 بازی با ربات</button>
+    <button class="bigbtn" id="mode-friend" style="margin-top:12px">👥 بازی با دوستانم</button>
+    <button class="bigbtn" id="mode-stranger" style="margin-top:12px">🎲 بازی با رقیب شانسی</button>
+    <div class="hint" id="home-hint">بعد از انتخاب، همه‌چیز همین‌جا تو صفحه انجام می‌شه — رنگ، سنگ‌کاغذقیچی و خود بازی.</div>
+  </div>
+
+  <!-- ============ INVITE: share the link from inside the Web App ============ -->
+  <div class="screen" id="scr-invite">
+    <h1>🔗 دعوت دوست</h1>
+    <div class="sub">این لینک رو برای دوستت بفرست — اون با گوشی خودش وارد می‌شه</div>
+    <div class="card" style="text-align:center">
+      <input type="text" id="invite-link" readonly>
+      <button class="bigbtn" id="copy-link">📋 کپی لینک</button>
+      <button class="bigbtn ghost" id="share-link" style="margin-top:12px">📤 اشتراک‌گذاری</button>
+    </div>
+    <div class="hint">وقتی دوستت وارد شد، پیام بازی تو چت میاد — از همون‌جا وارد بازی شو.</div>
+    <button class="bigbtn ghost" id="invite-home" style="margin-top:12px">🏠 صفحه‌ی اصلی</button>
+  </div>
+
+  <!-- ============ WAIT: stranger queue ============ -->
+  <div class="screen" id="scr-wait">
+    <h1>🎲 در انتظار حریف…</h1>
+    <div class="sub">به‌محض اینکه یه رقیب شانسی پیدا بشه، پیام بازی تو چت میاد.</div>
+    <div class="card" style="text-align:center; font-size:52px">⏳</div>
+    <button class="bigbtn ghost" id="wait-home">🏠 صفحه‌ی اصلی</button>
+  </div>
+
   <!-- ============ SETUP: MY colour only — two-player game ============ -->
-  <div class="screen on" id="scr-setup">
+  <div class="screen" id="scr-setup">
     <h1>🎮 دوز</h1>
     <div class="sub" id="setup-sub">رنگ مهره‌ی خودت رو انتخاب کن</div>
     <div class="card" id="card1">
@@ -217,6 +252,18 @@ const COLORS = {
 const discStyle = c => `background: radial-gradient(circle at 32% 28%, ${c.hi}, ${c.main} 58%, ${c.dark});`;
 let color1 = COLORS[params.get("c1")] ? params.get("c1") : "blue";
 let color2 = COLORS[params.get("c2")] ? params.get("c2") : "red";
+let myColor = COLORS[params.get("c1")] ? params.get("c1") : "blue"; // my pick on the home screen
+const BOT_USERNAME = "Cheshmha_Bbot";
+const inviteLink = gid => "https://t.me/" + BOT_USERNAME + "?start=game_" + gid;
+// The Web App makes the game id itself (8 hex chars, like the bot's),
+// so it already knows the game the moment it creates it.
+const newGameId = () => {
+  try {
+    return [...crypto.getRandomValues(new Uint8Array(4))].map(b => b.toString(16).padStart(2, "0")).join("");
+  } catch (e) {
+    return Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
+  }
+};
 let p1name = params.get("p1") || "مهدی";
 let p2name = params.get("p2") || "بهزاد";
 let score1 = +(params.get("s1") || 0), score2 = +(params.get("s2") || 0);
@@ -278,9 +325,80 @@ function applyMySetup() {
   const myInput = $(me === 1 ? "name1" : "name2");
   myInput.value = myName();
   myInput.disabled = remote; // in Telegram the name comes from the account
+  myColor = me === 1 ? color1 : color2;
+  refreshHomePalette();
   refreshPalettes();
 }
 if (me !== 0) applyMySetup();
+
+/* ---------- HOME: every choice lives here, inside the Web App ---------- */
+function buildHomePalette() {
+  const el = $("pal-home"); el.innerHTML = "";
+  Object.entries(COLORS).forEach(([key, c]) => {
+    const b = document.createElement("button");
+    b.className = "swatch"; b.style.cssText = discStyle(c); b.title = c.name;
+    b.setAttribute("aria-label", "رنگ " + c.name);
+    b.onclick = () => {
+      myColor = key;
+      if (me === 1) color1 = key; else if (me === 2) color2 = key;
+      if (gameId) sendToBot({ action: "color", color: key, g: gameId });
+      refreshHomePalette(); refreshPalettes(); haptic();
+    };
+    el.appendChild(b);
+  });
+}
+function refreshHomePalette() {
+  [...$("pal-home").children].forEach((b, i) => {
+    b.classList.toggle("sel", Object.keys(COLORS)[i] === myColor);
+  });
+}
+buildHomePalette(); refreshHomePalette();
+
+const needTG = () => {
+  if (isTG) return true;
+  $("home-hint").textContent = "این بازی فقط داخل تلگرام کار می‌کنه — از دکمه‌ی ورود به بازی تو چت بازش کن.";
+  return false;
+};
+const resetRpsScreen = () => {
+  $("rps-picked").textContent = ""; $("rps-result").textContent = "";
+  document.querySelectorAll("#rps-row .rps").forEach(b => { b.classList.remove("picked"); b.disabled = false; });
+};
+$("mode-bot").onclick = () => {
+  if (!needTG()) return;
+  gameId = newGameId(); me = 1;
+  p1name = (tgUser && tgUser.first_name) || "من"; p2name = "ربات 🤖";
+  color1 = myColor; color2 = "red";
+  sendToBot({ action: "vs_bot", game: gameId, color: myColor });
+  $("rps-sub").textContent = p1name + "، یکی رو انتخاب کن — ربات هم انتخاب می‌کنه و بات برنده رو معلوم می‌کنه";
+  resetRpsScreen(); show("scr-rps");
+};
+$("mode-friend").onclick = () => {
+  if (!needTG()) return;
+  gameId = newGameId(); me = 1;
+  p1name = (tgUser && tgUser.first_name) || "من";
+  color1 = myColor;
+  sendToBot({ action: "invite", game: gameId, color: myColor });
+  $("invite-link").value = inviteLink(gameId);
+  show("scr-invite");
+};
+$("mode-stranger").onclick = () => {
+  if (!needTG()) return;
+  gameId = newGameId();
+  sendToBot({ action: "stranger", game: gameId, color: myColor });
+  show("scr-wait");
+};
+$("copy-link").onclick = async () => {
+  const v = $("invite-link").value;
+  try { await navigator.clipboard.writeText(v); }
+  catch (e) { $("invite-link").select(); document.execCommand("copy"); }
+  $("copy-link").textContent = "✓ کپی شد";
+  setTimeout(() => { $("copy-link").textContent = "📋 کپی لینک"; }, 2000);
+};
+$("share-link").onclick = () => {
+  if (tg && tg.openTelegramLink) tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent($("invite-link").value) + "&text=" + encodeURIComponent("بازی دوز 🎮 — باهام بازی می‌کنی؟"));
+};
+$("invite-home").onclick = () => show("scr-home");
+$("wait-home").onclick = () => show("scr-home");
 
 /* "Who are you?" gate — only when Telegram couldn't tell us (e.g. the
    file opened directly). In the real game Telegram identifies the player
@@ -385,18 +503,34 @@ function drop(col) {
   sendToBot({ action: "drop", col, g: gameId }); // bot validates + updates both chats
 }
 $("rematch").onclick = () => {
-  if (isTG) { sendToBot({ action: "new", g: gameId }); return; }
-  $("to-rps").onclick();
+  if (!isTG) { $("to-rps").onclick(); return; }
+  // Rematch, all inside the Web App: I make the new game id, so I can
+  // jump straight to the RPS screen — the bot posts fresh entry cards.
+  const oldId = gameId;
+  gameId = newGameId();
+  sendToBot({ action: "new", g: oldId, game: gameId });
+  board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+  over = false; winCells = []; lastMove = null;
+  $("banner").classList.remove("show");
+  $("rps-sub").textContent = myName() + "، یکی رو انتخاب کن — حریفت تو گوشی خودش انتخاب می‌کنه و بات برنده رو معلوم می‌کنه";
+  resetRpsScreen(); show("scr-rps");
 };
 $("change-setup").onclick = () => show("scr-setup");
 
-/* Init: Telegram opens on the right screen for the current phase.
+/* Init: the entry button opens the right screen for the current phase.
+   No game id in the URL (opened from /start) → the home screen, where
+   every option lives. A game id → the screen for that game's phase.
    NOTE: the URL always carries board= (even all zeros for an empty
    board), so a bare `if (bstr)` ALWAYS showed the game screen and
    skipped the RPS screen — the game never started, and the bot silently
    ignored every tap on a column. Gate on real discs or on the phase. */
 (function init() {
   const boardHasDiscs = bstr && /[12]/.test(bstr);
+  if (!gameId) {
+    // Opened from /start with no game: the home screen, all options here.
+    show("scr-home");
+    return;
+  }
   if (boardHasDiscs || (remote && (phase === "playing" || phase === "finished"))) {
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
       const v = board[r][c];
@@ -407,12 +541,16 @@ $("change-setup").onclick = () => show("scr-setup");
     show("scr-game");
   } else if (remote && phase === "rps") {
     $("to-rps").onclick();
+  } else if (remote && phase === "joining") {
+    // Waiting for a friend: show the invite link for this game.
+    $("invite-link").value = inviteLink(gameId);
+    show("scr-invite");
   } else if (me === 0) {
     // Telegram didn't identify the player (file opened directly):
     // ask who is holding this phone BEFORE showing any colour picker.
     show("scr-who");
   } else {
-    render();
+    show("scr-home");
   }
 })();
 </script>
