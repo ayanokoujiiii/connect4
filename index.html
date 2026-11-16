@@ -125,6 +125,12 @@
     border-radius: 14px; padding: 10px; margin-bottom: 12px;
   }
   .notice.show { display: block; }
+  .warn {
+    display: none; text-align: center; font-size: 15px; font-weight: 700; color: #ff9d9d;
+    background: rgba(255,80,80,.14); border: 1px solid rgba(255,80,80,.55);
+    border-radius: 14px; padding: 10px; margin-bottom: 12px;
+  }
+  .warn.show { display: block; }
   .friend {
     display: flex; gap: 10px; align-items: center; padding: 10px 4px;
     border-bottom: 1px solid rgba(255,255,255,.12);
@@ -254,6 +260,8 @@
       <div class="palette" id="pal2"></div>
     </div>
     <button class="bigbtn" id="to-rps">✊✋✌️ سنگ، کاغذ، قیچی</button>
+    <button class="bigbtn ghost" id="setup-back-game">↩️ بازگشت به بازی</button>
+    <button class="bigbtn ghost" id="setup-home">🏠 منوی اصلی</button>
   </div>
 
   <!-- ============ RPS: MY throw only ============ -->
@@ -280,12 +288,17 @@
       <div class="player" id="p2box"><span class="pdot" id="pdot2"></span><span><span id="p2name">بهزاد</span><small>برد: <b id="s2">۰</b></small></span></div>
     </div>
     <div class="turn" id="turn">نوبت بازیکن اول است</div>
+    <div class="warn" id="warn"></div>
     <div class="board" id="board"></div>
     <!-- numbers BELOW the board -->
     <div class="colnums" id="colnums"></div>
     <div class="row">
       <button class="bigbtn" id="rematch">🔄 بازی دوباره</button>
       <button class="bigbtn ghost" id="change-setup">🎨 رنگ و شروع‌کننده</button>
+    </div>
+    <div class="row">
+      <button class="bigbtn ghost" id="resign">🏳️ تسلیم</button>
+      <button class="bigbtn ghost" id="to-home">🏠 منوی اصلی</button>
     </div>
     <div class="hint">روی عدد زیر هر ستون بزن — یا مستقیم روی همون ستون — مهره همون‌جا می‌افته.<br>۴ مهره پشت سر هم — عمودی، افقی یا مورب — یعنی برد. 🏆</div>
   </div>
@@ -338,6 +351,11 @@ let p1name = "مهدی", p2name = "بهزاد";
 let score1 = 0, score2 = 0;
 let gameId = params.get("g") || "";
 let game = null;            // last game state from the API
+let setupOpen = false;      // the user is on the setup screen on purpose —
+                            // the poll must NOT yank them back to the game
+let turnDeadline = 0;       // unix time the player to move must drop by
+let turnWarnings = 0;       // late answers on the current turn (2 = lose)
+let lastResignGame = "";    // game id the resign button was reset for
 let home = null;            // last home data from the API
 let openGame = null;        // my latest open game, if any (continue button)
 let waitingMode = null;     // "stranger" | "challenge" | null
@@ -404,6 +422,13 @@ function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = nul
 /* ---------- game state -> screen ---------- */
 function applyGame(g) {
   game = g;
+  if (g.id !== lastResignGame) {  // a new game: the resign button resets
+    lastResignGame = g.id;
+    $("resign").textContent = "🏳️ تسلیم"; $("resign").disabled = false;
+    if (resignArm) { clearTimeout(resignArm); resignArm = null; }
+  }
+  turnDeadline = g.turn_deadline || 0;
+  turnWarnings = g.turn_warnings || 0;
   // Slot values are NUMBERS everywhere (turn, winner, me, rps_done).
   // game_public used to return me as the string "1" — and the client's
   // strict check `game.turn !== me` (1 !== "1") then blocked EVERY drop
@@ -432,6 +457,10 @@ function applyGame(g) {
 }
 function route() {
   if (!game) { show("scr-home"); return; }
+  if (game.status === "finished") setupOpen = false;  // the game is over;
+  // there is nothing left to set up — show the result, not the setup.
+  if (setupOpen) { render(); return; }  // stay where the user chose to be;
+  // the state behind still updates, the screen does not switch.
   if (game.status === "joining") {
     if (me === 1) { $("invite-link").value = inviteLink(game.id); show("scr-invite"); setPoll(refreshGame, 2000); }
     else if (game.invited) {
@@ -671,6 +700,7 @@ $("join-accept").onclick = async () => {
 
 /* ---------- RPS: my throw only — the bot collects the opponent's ---------- */
 $("to-rps").onclick = () => {
+  setupOpen = false;  // leaving the setup screen on purpose
   if (me === 1) p1name = $("name1").value.trim() || p1name;
   else if (me === 2) p2name = $("name2").value.trim() || p2name;
   $("rps-sub").textContent = myName() + "، یکی رو انتخاب کن — حریفت تو گوشی خودش انتخاب می‌کنه و بات برنده رو معلوم می‌کنه";
@@ -698,7 +728,7 @@ document.querySelectorAll("#rps-row .rps").forEach(btn => {
     updateRpsStatus();
   };
 });
-$("rps-back").onclick = () => show("scr-setup");
+$("rps-back").onclick = () => { setupOpen = true; show("scr-setup"); };
 
 /* ---------- game ---------- */
 function lowestEmpty(col) { for (let r = ROWS-1; r >= 0; r--) if (board[r][col] === 0) return r; return -1; }
@@ -732,7 +762,9 @@ function render() {
   $("pdot2").style.cssText = discStyle(COLORS[color2]);
   $("p1box").classList.toggle("active", turn === 1 && !over);
   $("p2box").classList.toggle("active", turn === 2 && !over);
-  $("turn").textContent = over ? "🏁 بازی تمام شد" : ("نوبت " + (turn === 1 ? p1name : p2name) + " است");
+  $("turn").textContent = over ? "🏁 بازی تمام شد" : ("نوبت " + (turn === 1 ? p1name : p2name) + " است" + (turnDeadline ? " — " + fa(Math.max(0, Math.ceil(turnDeadline - Date.now() / 1000))) + " ثانیه" : ""));
+  $("warn").textContent = (!over && turnWarnings > 0) ? "⚠️ تذکر: ۳۰ ثانیه گذشت — اگه این نوبت دوباره دیر بشه، این دور رو باختی!" : "";
+  $("warn").classList.toggle("show", !over && turnWarnings > 0);
   // The poll rebuilds the board every tick — rebuilding the DOM replayed
   // the last disc's drop animation each time, so while waiting for the
   // opponent the discs kept "jumping" (Mehdi, 2026-11-16). Rebuild only
@@ -759,7 +791,7 @@ function render() {
   const nums = $("colnums"); nums.innerHTML = "";
   for (let c = 0; c < COLS; c++) {
     const btn = document.createElement("button");
-    btn.textContent = fa(c+1);
+    btn.textContent = String(c + 1);  // Latin digits, like the card
     btn.disabled = over || lowestEmpty(c) === -1;
     btn.setAttribute("aria-label", "انداختن در ستون " + fa(c+1));
     btn.onclick = () => drop(c);
@@ -773,7 +805,7 @@ function finish(winner) {
     bn.textContent = "🏆 برنده: " + (winner === 1 ? p1name : p2name);
     confetti(); haptic("ok");
   }
-  bn.classList.add("show"); render();
+  bn.classList.add("show"); $("resign").disabled = true; render();
 }
 async function drop(col) {
   if (over) return;
@@ -797,7 +829,35 @@ $("rematch").onclick = async () => {
   if (d.game) applyGame(d.game);
   else { $("rps-sub").textContent = myName() + "، یکی رو انتخاب کن — حریفت تو گوشی خودش انتخاب می‌کنه و بات برنده رو معلوم می‌کنه"; resetRpsScreen(); show("scr-rps"); }
 };
-$("change-setup").onclick = () => show("scr-setup");
+$("change-setup").onclick = () => { setupOpen = true; show("scr-setup"); };
+$("setup-back-game").onclick = () => { setupOpen = false; route(); };
+$("setup-home").onclick = () => goHome();
+$("to-home").onclick = () => goHome();
+async function goHome() {
+  // Back to the main menu: the game keeps living on the server (the
+  // opponent may still move) — home offers to continue it.
+  setupOpen = false;
+  stopPoll();
+  show("scr-home");
+  const d = await apiCall("/api/game", {});
+  openGame = (d.ok && d.game && (d.game.status === "rps" || d.game.status === "playing")) ? d.game : null;
+  await refreshHome();
+  setPoll(refreshHome, 20000);
+}
+let resignArm = null;
+$("resign").onclick = async () => {
+  if (!isTG || over) return;
+  if (!resignArm) {
+    resignArm = setTimeout(() => { resignArm = null; $("resign").textContent = "🏳️ تسلیم"; }, 3000);
+    $("resign").textContent = "مطمئنی؟ تسلیم می‌شی";
+    return;
+  }
+  clearTimeout(resignArm); resignArm = null;
+  $("resign").textContent = "🏳️ تسلیم";
+  const d = await apiAction({ action: "resign", g: gameId });
+  if (d.game) applyGame(d.game);
+  else if (d.error) showNotice(d.error);
+};
 
 /* Init: the entry button opens the right screen for the current phase.
    No game id in the URL (opened from /start) → the home screen, where
