@@ -222,6 +222,16 @@ def record_rps(game, slot, choice):
     return "decided"
 
 
+def ensure_bot_rps(game):
+    """Vs-bot games: the bot must always have a throw in. On a tie both
+    throws are cleared, so without this the game would wait forever for a
+    throw that never comes — Mehdi hit exactly this deadlock on 2026-11-16
+    (game stuck in 'rps' with rps={} after a tie)."""
+    if game.get("vs_bot") and game.get("status") == "rps" \
+            and "2" not in game.setdefault("rps", {}):
+        record_rps(game, "2", random.choice(["rock", "paper", "scissors"]))
+
+
 def pair_stranger(waiting, user_id, name):
     """Pure /stranger queue: returns the waiting partner (dict) or None.
 
@@ -619,6 +629,12 @@ def handle_callback(query):
         if not slot:
             answer_callback(query["id"], "تو تو این بازی نیستی")
             return
+        ensure_bot_rps(game)
+        if game["status"] != "rps":
+            # The bot's fresh throw decided it against an earlier human throw.
+            answer_callback(query["id"], "شروع شد! 🎮")
+            sync_game_message(game)
+            return
         res = record_rps(game, slot, data.split(":")[1])
         answer_callback(query["id"],
                         "ثبت شد — منتظر حریف…" if res == "waiting"
@@ -695,7 +711,9 @@ def handle_webapp_data(msg):
         # Each player throws on their own phone; the bot decides once both are in.
         slot = player_slot(game, user["id"])
         if slot and game["status"] == "rps":
-            record_rps(game, slot, payload.get("choice"))
+            ensure_bot_rps(game)
+            if game["status"] == "rps":
+                record_rps(game, slot, payload.get("choice"))
             save_state()
             sync_game_message(game)
     elif action == "drop":

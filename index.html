@@ -390,9 +390,14 @@ $("rematch").onclick = () => {
 };
 $("change-setup").onclick = () => show("scr-setup");
 
-/* Init: Telegram opens on the right screen for the current phase. */
+/* Init: Telegram opens on the right screen for the current phase.
+   NOTE: the URL always carries board= (even all zeros for an empty
+   board), so a bare `if (bstr)` ALWAYS showed the game screen and
+   skipped the RPS screen — the game never started, and the bot silently
+   ignored every tap on a column. Gate on real discs or on the phase. */
 (function init() {
-  if (bstr) {
+  const boardHasDiscs = bstr && /[12]/.test(bstr);
+  if (boardHasDiscs || (remote && (phase === "playing" || phase === "finished"))) {
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
       const v = board[r][c];
       if (v) { const w = checkWin(r, c, v); if (w) { winCells = w; over = true; } }
@@ -402,8 +407,6 @@ $("change-setup").onclick = () => show("scr-setup");
     show("scr-game");
   } else if (remote && phase === "rps") {
     $("to-rps").onclick();
-  } else if (remote && (phase === "playing" || phase === "finished")) {
-    render(); show("scr-game");
   } else if (me === 0) {
     // Telegram didn't identify the player (file opened directly):
     // ask who is holding this phone BEFORE showing any colour picker.
