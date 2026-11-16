@@ -125,6 +125,12 @@
     border-radius: 14px; padding: 10px; margin-bottom: 12px;
   }
   .notice.show { display: block; }
+  .music-toggle {
+    position: fixed; top: 12px; left: 12px; z-index: 50;
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    background: rgba(0,0,0,.45); font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
   .warn {
     display: none; text-align: center; font-size: 15px; font-weight: 700; color: #ff9d9d;
     background: rgba(255,80,80,.14); border: 1px solid rgba(255,80,80,.55);
@@ -156,6 +162,8 @@
 </style>
 </head>
 <body>
+<audio id="bgm" src="nocturne20.mp3" loop preload="auto"></audio>
+<button class="music-toggle" id="music-toggle" aria-label="موسیقی">🔊</button>
 <div class="wrap">
   <div class="notice" id="notice"></div>
 
@@ -342,6 +350,28 @@ const $ = id => document.getElementById(id);
 const show = id => { document.querySelectorAll(".screen").forEach(s => s.classList.remove("on")); $(id).classList.add("on"); };
 const haptic = kind => { if (tg && tg.HapticFeedback) tg.HapticFeedback[kind === "ok" ? "notificationOccurred" : "selectionChanged"](...(kind === "ok" ? ["success"] : [])); };
 const showNotice = t => { const n = $("notice"); if (t) { n.textContent = t; n.classList.add("show"); } else n.classList.remove("show"); };
+
+/* ---------- background music: Chopin, Nocturne No. 20 in C-sharp minor,
+   Op. posth. — Frank Lévy, Musopen "Set Chopin Free" (public domain).
+   It loops after entering. Browsers block sound until the user taps
+   once, so the first tap anywhere starts it; the 🔊/🔇 button mutes
+   it, and the choice is remembered. ---------- */
+const bgm = $("bgm");
+let musicOn = localStorage.getItem("douz_music") !== "off";
+bgm.volume = 0.6;
+const setMusicIcon = () => { $("music-toggle").textContent = musicOn ? "🔊" : "🔇"; };
+const tryMusic = () => { if (musicOn && bgm.paused) bgm.play().catch(() => {}); };
+bgm.addEventListener("playing", () => document.removeEventListener("pointerdown", tryMusic));
+setMusicIcon();
+tryMusic();
+document.addEventListener("pointerdown", tryMusic);
+$("music-toggle").onclick = () => {
+  musicOn = !musicOn;
+  localStorage.setItem("douz_music", musicOn ? "on" : "off");
+  setMusicIcon();
+  if (musicOn) { document.addEventListener("pointerdown", tryMusic); bgm.play().catch(() => {}); }
+  else bgm.pause();
+};
 
 /* ---------- state ---------- */
 let me = 0;                 // my slot in the current game: 1 | 2 | 0
