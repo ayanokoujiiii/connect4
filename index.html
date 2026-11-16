@@ -8,6 +8,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --gold: #ffd23e; --gold-deep: #ffc700; --ink: #241a00;
+    --card: rgba(255,255,255,.08); --line: rgba(255,255,255,.16);
+    --muted: #cfc8ff; --green: #7dff9b; --red: #ff9db0;
+  }
   body {
     margin: 0; min-height: 100vh; font-family: "Vazirmatn", Tahoma, sans-serif; color: #fff;
     background:
@@ -17,23 +22,42 @@
     display: flex; flex-direction: column; align-items: center;
     padding: 14px 12px 24px; user-select: none;
   }
-  .wrap { width: 100%; max-width: 480px; }
-  .screen { display: none; }
-  .screen.on { display: block; animation: fade .38s cubic-bezier(.2,.9,.3,1.1); }
-  @keyframes fade { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
-  h1 { font-size: 28px; font-weight: 900; text-align: center; margin: 2px 0; text-shadow: 0 3px 14px rgba(0,0,0,.5); }
-  .sub { text-align: center; color: #cfc8ff; font-size: 14px; margin-bottom: 14px; }
-  .card {
-    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16);
-    border-radius: 22px; padding: 16px; margin-bottom: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,.35); backdrop-filter: blur(6px);
+  /* A slow breathing glow at the top — opacity only, so it costs nothing. */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(520px 300px at 50% -8%, rgba(168,85,247,.28), transparent 70%);
+    animation: breathe 7s ease-in-out infinite;
   }
-  .card h2 { font-size: 19px; margin: 0 0 10px; }
+  @keyframes breathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+  .wrap { width: 100%; max-width: 480px; position: relative; z-index: 1; }
+  .screen { display: none; }
+  .screen.on { display: block; animation: fade .38s cubic-bezier(.2,.9,.3,1.1); will-change: opacity, transform; }
+  @keyframes fade { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
+  h1 {
+    font-size: 31px; font-weight: 900; text-align: center; margin: 4px 0 2px; letter-spacing: -0.5px;
+    background: linear-gradient(180deg, #ffffff 25%, var(--gold) 95%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 3px 10px rgba(0,0,0,.45));
+  }
+  .sub { text-align: center; color: var(--muted); font-size: 15px; line-height: 1.7; margin-bottom: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 22px; padding: 18px; margin-bottom: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
+    backdrop-filter: blur(6px);
+  }
+  .card h2 { font-size: 19px; margin: 0 0 12px; position: relative; padding-bottom: 9px; }
+  .card h2::after {
+    content: ""; position: absolute; right: 0; bottom: 0; width: 34px; height: 3px;
+    border-radius: 3px; background: linear-gradient(90deg, var(--gold), #ff9d00);
+  }
   input[type=text] {
     width: 100%; font-family: inherit; font-size: 18px; font-weight: 700; color: #fff;
     background: rgba(0,0,0,.35); border: 2px solid rgba(255,255,255,.25);
     border-radius: 14px; padding: 12px; margin-bottom: 12px; text-align: center;
+    transition: border-color .15s ease, box-shadow .15s ease;
   }
+  input[type=text]:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(255,210,62,.22); }
   .palette { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   .swatch {
     width: 52px; height: 52px; border-radius: 50%; border: 3px solid transparent;
@@ -45,34 +69,48 @@
   .swatch.dim { opacity: .35; }
   .bigbtn {
     width: 100%; min-height: 66px; font-family: inherit; font-size: 21px; font-weight: 900;
-    color: #241a00; background: linear-gradient(180deg, #ffe680, #ffc700);
+    color: var(--ink); background: linear-gradient(180deg, #ffe680, var(--gold-deep));
     border: none; border-radius: 18px; cursor: pointer;
-    box-shadow: 0 6px 0 #a67c00, 0 12px 24px rgba(0,0,0,.45); margin-top: 6px;
-    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    box-shadow: 0 6px 0 #a67c00, 0 12px 24px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.65); margin-top: 6px;
+    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease, opacity .15s ease;
   }
   .bigbtn:hover { filter: brightness(1.07); }
   .bigbtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #a67c00; }
+  .bigbtn:disabled { opacity: .45; box-shadow: 0 3px 0 #a67c00; cursor: default; filter: none; }
   .bigbtn.ghost {
     background: rgba(255,255,255,.12); color: #fff; font-size: 18px;
     border: 2px solid rgba(255,255,255,.3); box-shadow: none; min-height: 56px;
   }
+  .bigbtn.ghost:hover { background: rgba(255,255,255,.18); }
+  .bigbtn.ghost:active { box-shadow: none; }
+  .bigbtn.ghost:disabled { opacity: .4; box-shadow: none; }
   .bigbtn.small { min-height: 48px; font-size: 17px; margin-top: 0; }
-  .rps-row { display: flex; gap: 10px; justify-content: center; margin: 8px 0; }
+  /* One primary action on home: the two secondary modes sit a touch lower. */
+  #mode-friend, #mode-stranger { min-height: 58px; font-size: 19px; }
+  .rps-row { display: flex; gap: 12px; justify-content: center; margin: 10px 0; }
   .rps {
-    width: 104px; height: 104px; font-size: 52px; border-radius: 24px; cursor: pointer;
+    width: 104px; height: 108px; font-size: 50px; line-height: 1.15; border-radius: 24px; cursor: pointer;
     background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.07));
-    border: 2px solid rgba(255,255,255,.35); box-shadow: 0 8px 20px rgba(0,0,0,.4);
-    transition: transform .12s ease, background .12s ease;
+    border: 2px solid rgba(255,255,255,.35); box-shadow: 0 8px 20px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.25);
+    transition: transform .12s ease, background .12s ease, border-color .12s ease;
   }
+  /* A small Persian label under each throw — pure CSS, no markup change. */
+  .rps::after { display: block; font-size: 14px; font-weight: 900; color: #fff; line-height: 1.4; }
+  .rps[data-v="rock"]::after { content: "سنگ"; }
+  .rps[data-v="paper"]::after { content: "کاغذ"; }
+  .rps[data-v="scissors"]::after { content: "قیچی"; }
   .rps:active { transform: scale(.93); }
-  .rps.picked { border-color: #ffd23e; background: linear-gradient(180deg, #ffe680, #ffc700); animation: rpsPop .32s ease; }
+  .rps.picked { border-color: #ffd23e; background: linear-gradient(180deg, #ffe680, #ffc700); animation: rpsPop .32s ease; box-shadow: 0 0 24px rgba(255,210,62,.45); }
+  .rps.picked::after { color: #241a00; }
   @keyframes rpsPop { 0% { transform: scale(1); } 45% { transform: scale(1.14) rotate(-4deg); } 100% { transform: scale(1); } }
   .rps:disabled { opacity: .45; }
-  .scorebar { display: flex; gap: 10px; margin-bottom: 10px; }
+  .scorebar { display: flex; gap: 10px; margin-bottom: 12px; }
   .player {
     flex: 1; border-radius: 18px; padding: 10px 12px; display: flex; gap: 10px; align-items: center;
     background: rgba(255,255,255,.08); border: 2px solid transparent; font-size: 17px; font-weight: 700;
+    transition: border-color .25s ease, background .25s ease, box-shadow .25s ease;
   }
+  .player b { color: var(--gold); font-size: 19px; }
   .player.active { border-color: #ffd23e; background: rgba(255,210,62,.14); animation: activeGlow 1.2s ease-in-out infinite alternate; }
   @keyframes activeGlow { from { box-shadow: 0 0 8px rgba(255,210,62,.18); } to { box-shadow: 0 0 26px rgba(255,210,62,.55); } }
   .player.active .pdot { animation: dotPulse 1s ease-in-out infinite alternate; }
@@ -81,45 +119,67 @@
   .pdot { width: 34px; height: 34px; border-radius: 50%; flex: none;
     box-shadow: inset -2px -4px 7px rgba(0,0,0,.35), inset 2px 4px 7px rgba(255,255,255,.5), 0 3px 8px rgba(0,0,0,.5); }
   .turn {
-    text-align: center; font-size: 20px; font-weight: 900; border-radius: 16px; padding: 11px;
+    text-align: center; font-size: 20px; font-weight: 900; border-radius: 16px; padding: 12px;
     background: rgba(255,210,62,.16); border: 2px solid #ffd23e; margin-bottom: 12px;
+    box-shadow: 0 0 18px rgba(255,210,62,.12);
+  }
+  .turn::before {
+    content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--gold); margin-left: 8px; vertical-align: middle;
+    animation: dotPulse 1s ease-in-out infinite alternate;
   }
   .board {
     background: linear-gradient(180deg, #4658e8, #232f8f 55%, #1a2368);
     border-radius: 26px; padding: 10px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
-    box-shadow: 0 18px 40px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.3), inset 0 -8px 18px rgba(0,0,0,.4);
+    box-shadow: 0 18px 40px rgba(0,0,0,.6), 0 0 0 1px rgba(120,140,255,.35), 0 0 34px rgba(70,88,232,.35),
+      inset 0 2px 0 rgba(255,255,255,.3), inset 0 -8px 18px rgba(0,0,0,.4);
     border-bottom: 5px solid rgba(0,0,0,.4);
+  }
+  /* Before the first poll the board is empty — show a loading state,
+     never a blank hole (pure CSS: :empty only matches pre-render). */
+  .board:empty { display: flex; align-items: center; justify-content: center; min-height: 280px; }
+  .board:empty::before {
+    content: "⏳ در حال بارگذاری بازی…"; font-size: 17px; font-weight: 700; color: var(--muted);
+    animation: breathe 1.8s ease-in-out infinite;
   }
   .cell {
     aspect-ratio: 1; border-radius: 50%; background: #0d1440; border: none; padding: 0;
     box-shadow: inset 0 6px 12px rgba(0,0,0,.75), inset 0 -2px 5px rgba(255,255,255,.12); cursor: pointer; position: relative;
     display: flex; align-items: center; justify-content: center;
+    transition: transform .1s ease;
   }
+  .cell:active { transform: scale(.94); }
   .disc {
     width: 88%; height: 88%; border-radius: 50%; position: relative;
     box-shadow: inset -3px -6px 9px rgba(0,0,0,.35), inset 3px 6px 9px rgba(255,255,255,.5), 0 5px 10px rgba(0,0,0,.5);
+  }
+  .disc::before {  /* faint bounce-light along the bottom rim */
+    content: ""; position: absolute; left: 18%; bottom: 4%; width: 64%; height: 22%;
+    border-radius: 50%; background: radial-gradient(ellipse at center, rgba(255,255,255,.35), rgba(255,255,255,0) 70%);
   }
   .disc::after {  /* glossy 3D highlight */
     content: ""; position: absolute; left: 12%; top: 7%; width: 48%; height: 34%;
     border-radius: 50%; background: radial-gradient(ellipse at center, rgba(255,255,255,.9), rgba(255,255,255,0) 70%);
   }
-  .disc.new { animation: drop .45s cubic-bezier(.2,.9,.3,1.15); }
+  .disc.new { animation: drop var(--dropdur, .3s) cubic-bezier(.25,.8,.35,1); }
   @keyframes drop {
-    0% { transform: translateY(-320px) scale(.92); opacity: .3; }
-    70% { transform: translateY(0) scale(1.07); opacity: 1; }
+    0% { transform: translateY(var(--fall, -320px)) scale(.94); opacity: .35; }
+    72% { transform: translateY(0) scale(1.06); opacity: 1; }
     100% { transform: translateY(0) scale(1); opacity: 1; }
   }
-  .disc.win { outline: 4px solid #ffd23e; outline-offset: 2px; animation: winpulse .55s ease-in-out infinite alternate; }
+  .disc.win { outline: 4px solid #ffd23e; outline-offset: 2px; animation: winpulse .55s ease-in-out infinite alternate; box-shadow: 0 0 22px 4px rgba(255,210,62,.55), inset -3px -6px 9px rgba(0,0,0,.35), inset 3px 6px 9px rgba(255,255,255,.5); }
   @keyframes winpulse { from { transform: scale(1); filter: brightness(1); } to { transform: scale(1.16); filter: brightness(1.3); } }
   /* NUMBERS — BELOW the board, big */
   .colnums { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
+  .colnums:empty { min-height: 62px; }  /* no layout jump while the numbers load */
   .colnums button {
     font-family: inherit; font-size: 30px; font-weight: 900; color: #fff; height: 62px;
     background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.08));
     border: 2px solid rgba(255,255,255,.35); border-radius: 16px; cursor: pointer;
-    box-shadow: 0 5px 14px rgba(0,0,0,.4);
-    transition: transform .12s ease, background .12s ease, color .12s ease;
+    box-shadow: 0 5px 14px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.25);
+    transition: transform .12s ease, background .12s ease, color .12s ease, filter .12s ease;
   }
+  .colnums button:hover { filter: brightness(1.15); }
   .colnums button:active { transform: scale(.94); background: linear-gradient(180deg, #ffe680, #ffc700); color: #241a00; }
   .colnums button:disabled { opacity: .35; }
   .row { display: flex; gap: 10px; margin-top: 12px; }
@@ -127,7 +187,7 @@
   .banner {
     display: none; text-align: center; font-size: 24px; font-weight: 900; color: #241a00;
     background: linear-gradient(180deg, #ffe680, #ffc700); border-radius: 18px; padding: 14px; margin-bottom: 12px;
-    box-shadow: 0 10px 26px rgba(0,0,0,.45);
+    box-shadow: 0 10px 26px rgba(0,0,0,.45), 0 0 30px rgba(255,210,62,.35);
   }
   .banner.show { display: block; animation: pop .35s ease; }
   @keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -140,25 +200,33 @@
     background: rgba(255,210,62,.12); border: 1px solid rgba(255,210,62,.5);
     border-radius: 14px; padding: 10px; margin-bottom: 12px;
   }
-  .notice.show { display: block; }
+  .notice.show { display: block; animation: slideIn .3s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
   .music-toggle {
     position: fixed; top: 12px; left: 12px; z-index: 50;
     width: 44px; height: 44px; border-radius: 50%; border: none;
     background: rgba(0,0,0,.45); font-size: 20px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,.4); transition: transform .12s ease, background .12s ease;
   }
+  .music-toggle:hover { background: rgba(0,0,0,.6); }
+  .music-toggle:active { transform: scale(.86); }
   .warn {
     display: none; text-align: center; font-size: 15px; font-weight: 700; color: #ff9d9d;
     background: rgba(255,80,80,.14); border: 1px solid rgba(255,80,80,.55);
     border-radius: 14px; padding: 10px; margin-bottom: 12px;
   }
-  .warn.show { display: block; }
-  .emoji-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+  .warn.show { display: block; animation: slideIn .3s ease; }
+  .emoji-row {
+    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 14px;
+    border-top: 1px solid rgba(255,255,255,.12); padding-top: 12px;
+  }
   .emoji-row button {
     font-size: 30px; width: 52px; height: 52px; border-radius: 14px; cursor: pointer;
     background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.2);
-    transition: transform .12s ease;
+    transition: transform .12s ease, background .12s ease, border-color .12s ease;
   }
+  .emoji-row button:hover { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.4); }
   .emoji-row button:active { transform: scale(1.3) rotate(-6deg); }
   .emoji-pop {
     position: fixed; left: 50%; top: 38%; transform: translate(-50%,-50%);
@@ -175,31 +243,46 @@
     100% { opacity: 0; transform: translate(-50%,-110%) scale(1.05); }
   }
   .friend {
-    display: flex; gap: 10px; align-items: center; padding: 10px 4px;
-    border-bottom: 1px solid rgba(255,255,255,.12);
+    display: flex; gap: 10px; align-items: center; padding: 10px 12px;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 16px; margin-bottom: 8px;
   }
-  .friend:last-child { border-bottom: none; }
+  .friend:last-child { margin-bottom: 0; }
   .friend .finfo { flex: 1; text-align: right; }
   .friend .fname { font-size: 17px; font-weight: 700; }
   .friend .fmeta { font-size: 13px; color: #cfc8ff; }
   .friend .fmeta .on { color: #7dff9b; font-weight: 700; }
+  .friend .fmeta .on::before {
+    content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: #7dff9b; margin-left: 5px; vertical-align: middle;
+    animation: dotPulse 1.4s ease-in-out infinite alternate;
+  }
   .fbtn {
     font-family: inherit; font-size: 15px; font-weight: 900; color: #241a00;
     background: linear-gradient(180deg, #ffe680, #ffc700); border: none; border-radius: 12px;
     padding: 10px 14px; cursor: pointer; flex: none;
+    box-shadow: 0 3px 0 #a67c00; transition: transform .12s ease, box-shadow .12s ease;
   }
-  .fbtn:active { transform: scale(.94); }
+  .fbtn:active { transform: translateY(2px); box-shadow: 0 1px 0 #a67c00; }
   .hist { font-size: 15px; line-height: 2; }
+  .hist > div { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .hist > div:last-child { border-bottom: none; }
   .hist .win { color: #7dff9b; font-weight: 700; }
   .hist .loss { color: #ff9db0; font-weight: 700; }
   .hist .draw { color: #cfc8ff; font-weight: 700; }
   .hist .hdate { color: #8f86c9; font-size: 13px; }
   .empty { text-align: center; color: #cfc8ff; font-size: 14px; padding: 6px 0; }
   .uname { font-size: 16px; color: #ffd23e; font-weight: 900; }
+  /* Waiting screens: the hourglass gently bobs instead of sitting dead. */
+  #scr-wait .card, #scr-wait-challenge .card { animation: hourglass 1.8s ease-in-out infinite; }
+  @keyframes hourglass { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+  /* Small phones: the card blur is a known GPU cost — the translucency
+     alone carries the look, and the board stays smooth (audit, 2026-11-17). */
+  @media (max-width: 520px) { .card { backdrop-filter: none; } }
 </style>
 </head>
 <body>
-<audio id="bgm" src="nocturne20.mp3" loop preload="auto"></audio>
+<audio id="bgm" src="nocturne20.mp3" loop preload="none"></audio>
 <button class="music-toggle" id="music-toggle" aria-label="موسیقی">🔊</button>
 <div class="emoji-pop" id="emoji-pop"></div>
 <div class="wrap">
@@ -220,7 +303,11 @@
   <div class="screen on" id="scr-home">
     <h1>🎮 دوز</h1>
     <div class="sub">هر بازیکن با گوشی خودش بازی می‌کنه</div>
-    <div class="card">
+    <button class="bigbtn" id="mode-bot">🤖 بازی با ربات</button>
+    <button class="bigbtn" id="mode-friend" style="margin-top:12px">👥 بازی با دوستانم</button>
+    <button class="bigbtn" id="mode-stranger" style="margin-top:12px">🎲 بازی با رقیب شانسی</button>
+    <button class="bigbtn ghost" id="continue-game" style="margin-top:12px; display:none">▶️ ادامه‌ی بازی نیمه‌تمام</button>
+    <div class="card" style="margin-top:12px">
       <h2>👤 یوزرنیم من</h2>
       <div style="text-align:center; margin-bottom:10px">یوزرنیم فعلی: <span class="uname" id="my-username">—</span></div>
       <input type="text" id="username-input" placeholder="یه یوزرنیم انتخاب کن…" maxlength="32" style="text-align:left; direction:ltr">
@@ -231,10 +318,6 @@
       <h2>🎨 رنگ مهره‌ی من</h2>
       <div class="palette" id="pal-home"></div>
     </div>
-    <button class="bigbtn" id="mode-bot">🤖 بازی با ربات</button>
-    <button class="bigbtn" id="mode-friend" style="margin-top:12px">👥 بازی با دوستانم</button>
-    <button class="bigbtn" id="mode-stranger" style="margin-top:12px">🎲 بازی با رقیب شانسی</button>
-    <button class="bigbtn ghost" id="continue-game" style="margin-top:12px; display:none">▶️ ادامه‌ی بازی نیمه‌تمام</button>
     <div class="card" style="margin-top:12px">
       <h2>👥 دوستان من</h2>
       <div id="friends-list"><div class="empty">هنوز دوستی اضافه نکردی — یوزرنیم دوستت رو بزن تا همیشه این‌جا باشه.</div></div>
@@ -386,7 +469,15 @@ const newGameId = () => {
 };
 
 const $ = id => document.getElementById(id);
-const show = id => { document.querySelectorAll(".screen").forEach(s => s.classList.remove("on")); $(id).classList.add("on"); };
+// If the screen is already showing, do NOTHING — re-adding .on replayed
+// the entrance animation on every poll (route() calls show() every
+// second), so the whole game screen slid and faded once a second and
+// every disc drop looked laggy and jumpy (Mehdi, 2026-11-17).
+const show = id => {
+  if ($(id).classList.contains("on")) return;
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("on"));
+  $(id).classList.add("on");
+};
 const haptic = kind => { if (tg && tg.HapticFeedback) tg.HapticFeedback[kind === "ok" ? "notificationOccurred" : "selectionChanged"](...(kind === "ok" ? ["success"] : [])); };
 const showNotice = t => { const n = $("notice"); if (t) { n.textContent = t; n.classList.add("show"); } else n.classList.remove("show"); };
 
@@ -424,9 +515,11 @@ let setupOpen = false;      // the user is on the setup screen on purpose —
                             // the poll must NOT yank them back to the game
 let turnDeadline = 0;       // unix time the player to move must drop by
 let turnWarnings = 0;       // late answers on the current turn (2 = lose)
+let turnTimeoutSecs = 45;   // seconds per turn, from the server (never hardcoded)
 let lastEmojiAt = 0, lastEmojiGame = "";  // the latest reaction shown
 let myEmojiPending = false;  // I already showed mine — don't replay it
 let emojiCooldownUntil = 0;
+let setupAppliedFor = "";  // the game my setup screen was built for
 let lastResignGame = "";    // game id the resign button was reset for
 let home = null;            // last home data from the API
 let openGame = null;        // my latest open game, if any (continue button)
@@ -475,6 +568,16 @@ async function apiCall(path, body) {
   }
 }
 const apiAction = payload => apiCall("/api/action", { payload });
+// One place for every action reply: the server returns BOTH game and
+// error on a rejected action (e.g. a drop on a full column), so the old
+// `if (d.game) ... else if (d.error)` never showed the error — rejected
+// actions just vanished (audit, 2026-11-17). Show the error AND apply
+// the game state (the game reconciles the optimistic disc).
+function applyReply(d, fallback) {
+  if (d.error) showNotice(d.error);
+  else if (!d.game) showNotice(fallback || "نشد — دوباره تلاش کن.");
+  if (d.game) applyGame(d.game);
+}
 async function refreshGame() {
   const seq = pollGen;  // a navigation while we wait discards this answer
   const d = await apiCall("/api/game", gameId ? { g: gameId } : {});
@@ -488,9 +591,16 @@ async function refreshHome() {
   const seq = pollGen;
   const d = await apiCall("/api/home", {});
   if (seq !== pollGen) return false;
-  if (d.ok && d.home) { home = d.home; renderHome(); showNotice(null); return true; }
+  if (d.ok && d.home) { home = d.home; renderHome(); showNotice(null); }
   if (d.error) showNotice(d.error);
-  return false;
+  // A friend can join while the challenger sits on home — refresh the
+  // open game too, so "ادامه‌ی بازی" appears without reopening
+  // (audit, 2026-11-17).
+  const g = await apiCall("/api/game", {});
+  if (seq !== pollGen) return false;
+  openGame = (g.ok && g.game && (g.game.status === "rps" || g.game.status === "playing")) ? g.game : null;
+  renderHome();
+  return d.ok;
 }
 /* The poll never overlaps itself: the old timer fired every second even
    when the previous fetch was still in flight (slow LTE), so requests
@@ -522,6 +632,7 @@ function applyGame(g) {
   }
   turnDeadline = g.turn_deadline || 0;
   turnWarnings = g.turn_warnings || 0;
+  if (g.turn_timeout) turnTimeoutSecs = g.turn_timeout;
   // Slot values are NUMBERS everywhere (turn, winner, me, rps_done).
   // game_public used to return me as the string "1" — and the client's
   // strict check `game.turn !== me` (1 !== "1") then blocked EVERY drop
@@ -545,6 +656,12 @@ function applyGame(g) {
   myColor = me === 1 ? color1 : (me === 2 ? color2 : myColor);
   if (me === 1) p1name = (tgUser && tgUser.first_name) || p1name;
   if (me === 2) p2name = (tgUser && tgUser.first_name) || p2name;
+  // Show ONLY my colour card, once per game, as soon as my slot is
+  // known — for games started from home `me` is 0 at load, so the
+  // load-time call never ran and BOTH cards stayed visible (the v3.1
+  // bug, back through the home path — audit, 2026-11-17). Once per
+  // game only: re-running it would overwrite the name I am typing.
+  if (me && setupAppliedFor !== g.id) { setupAppliedFor = g.id; applyMySetup(); }
   // A new emoji reaction from either side: show it big and animated,
   // once. My own I already showed when I tapped it — don't replay it.
   if (g.id !== lastEmojiGame) { lastEmojiGame = g.id; lastEmojiAt = 0; myEmojiPending = false; }
@@ -613,7 +730,7 @@ function buildPalette(elId, who) {
       if (who !== me) return;
       if (who === 1) color1 = key; else color2 = key;
       myColor = key;
-      if (gameId) { const d = await apiAction({ action: "color", color: key, g: gameId }); if (d.game) applyGame(d.game); }
+      if (gameId) { const d = await apiAction({ action: "color", color: key, g: gameId }); applyReply(d); }
       refreshPalettes(); refreshHomePalette(); haptic();
     };
     el.appendChild(b);
@@ -659,7 +776,7 @@ function buildHomePalette() {
     b.onclick = async () => {
       myColor = key;
       if (me === 1) color1 = key; else if (me === 2) color2 = key;
-      if (gameId) { const d = await apiAction({ action: "color", color: key, g: gameId }); if (d.game) applyGame(d.game); }
+      if (gameId) { const d = await apiAction({ action: "color", color: key, g: gameId }); applyReply(d); }
       refreshHomePalette(); refreshPalettes(); haptic();
     };
     el.appendChild(b);
@@ -740,26 +857,31 @@ $("continue-game").onclick = () => { if (openGame) { gameId = openGame.id; apply
 
 $("mode-bot").onclick = async () => {
   if (!isTG) { showNotice("این بازی فقط داخل تلگرام کار می‌کنه."); return; }
+  const btn = $("mode-bot"); if (btn.disabled) return; btn.disabled = true;
   gameId = newGameId(); me = 1;
   p1name = (tgUser && tgUser.first_name) || "من"; p2name = "ربات 🤖";
   color1 = myColor; color2 = "red";
   const d = await apiAction({ action: "vs_bot", game: gameId, color: myColor });
-  if (d.game) applyGame(d.game);
-  else showNotice(d.error || "نشد — دوباره تلاش کن.");
+  btn.disabled = false;
+  applyReply(d);
 };
 $("mode-friend").onclick = async () => {
   if (!isTG) { showNotice("این بازی فقط داخل تلگرام کار می‌کنه."); return; }
+  const btn = $("mode-friend"); if (btn.disabled) return; btn.disabled = true;
   gameId = newGameId(); me = 1;
   p1name = (tgUser && tgUser.first_name) || "من";
   color1 = myColor;
   const d = await apiAction({ action: "invite", game: gameId, color: myColor });
-  if (d.game) applyGame(d.game);
-  else showNotice(d.error || "نشد — دوباره تلاش کن.");
+  btn.disabled = false;
+  applyReply(d);
 };
 $("mode-stranger").onclick = async () => {
   if (!isTG) { showNotice("این بازی فقط داخل تلگرام کار می‌کنه."); return; }
+  const btn = $("mode-stranger"); if (btn.disabled) return; btn.disabled = true;
   gameId = newGameId();
   const d = await apiAction({ action: "stranger", game: gameId, color: myColor });
+  btn.disabled = false;
+  if (d.error) showNotice(d.error);
   if (d.game) { applyGame(d.game); return; }
   if (d.waiting) {
     waitingMode = "stranger";
@@ -796,12 +918,12 @@ $("who2").onclick = () => { me = 2; applyMySetup(); show("scr-setup"); };
 /* ---------- JOIN: a friend challenged me ---------- */
 $("join-accept").onclick = async () => {
   const d = await apiAction({ action: "join", g: gameId });
-  if (d.game) applyGame(d.game);
-  else showNotice(d.error || "نشد — دوباره تلاش کن.");
+  applyReply(d);
 };
 
 /* ---------- RPS: my throw only — the bot collects the opponent's ---------- */
 $("to-rps").onclick = () => {
+  if (game && game.status !== "rps") { route(); return; }  // already playing — don't flash the RPS screen
   setupOpen = false;  // leaving the setup screen on purpose
   if (me === 1) p1name = $("name1").value.trim() || p1name;
   else if (me === 2) p2name = $("name2").value.trim() || p2name;
@@ -815,9 +937,12 @@ const resetRpsScreen = () => {
 document.querySelectorAll("#rps-row .rps").forEach(btn => {
   btn.onclick = async () => {
     const v = btn.dataset.v;
-    document.querySelectorAll("#rps-row .rps").forEach(b => b.classList.remove("picked"));
+    // Disable FIRST — before the round-trip — or a double-tap sends
+    // two throws (the server overwrites, but the tap feels dead).
+    document.querySelectorAll("#rps-row .rps").forEach(b => { b.disabled = true; b.classList.remove("picked"); });
     btn.classList.add("picked"); haptic();
     const d = await apiAction({ action: "rps", choice: v, g: gameId });
+    if (d.error) showNotice(d.error);
     if (d.game) applyGame(d.game);
     if (d.game && d.game.status === "rps" && !(d.game.rps_done || []).includes(me)) {
       // Tie — the server cleared both throws. Throw again, don't get stuck.
@@ -864,18 +989,25 @@ function render() {
   $("pdot2").style.cssText = discStyle(COLORS[color2]);
   $("p1box").classList.toggle("active", turn === 1 && !over);
   $("p2box").classList.toggle("active", turn === 2 && !over);
-  $("turn").textContent = over ? "🏁 بازی تمام شد" : ("نوبت " + (turn === 1 ? p1name : p2name) + " است" + (turnDeadline ? " — " + fa(Math.max(0, Math.ceil(turnDeadline - Date.now() / 1000))) + " ثانیه" : ""));
-  $("warn").textContent = (!over && turnWarnings > 0) ? "⚠️ تذکر: ۴۵ ثانیه گذشت — اگه این نوبت دوباره دیر بشه، این دور رو باختی!" : "";
+  $("turn").textContent = over ? "🏁 بازی تمام شد" : ("نوبت " + (turn === 1 ? p1name : p2name) + " است" + (turnDeadline ? " — " + fa(Math.max(0, Math.ceil(turnDeadline - Date.now() / 1000))) + " ثانیه" : "") + (game && game.vs_bot && turn === 2 ? " — 🤖 داره فکر می‌کنه…" : ""));
+  $("warn").textContent = (!over && turnWarnings > 0) ? "⚠️ تذکر: " + fa(turnTimeoutSecs) + " ثانیه گذشت — اگه این نوبت دوباره دیر بشه، این دور رو باختی!" : "";
   $("warn").classList.toggle("show", !over && turnWarnings > 0);
+  // A fresh game must never show the previous game's win banner (the
+  // opponent never clicks rematch, so only the poll can clear it).
+  if (!over) $("banner").classList.remove("show");
   // The poll rebuilds the board every tick — rebuilding the DOM replayed
   // the last disc's drop animation each time, so while waiting for the
   // opponent the discs kept "jumping" (Mehdi, 2026-11-16). Rebuild only
   // when the board actually changed; a tap on a live button also stops
   // being eaten by a rebuild mid-tap.
-  const bkey = board.map(r => r.join("")).join("") + "|" + (over ? 1 : 0) + "|" + winCells.length + "|" + (lastMove ? lastMove.join(",") : "");
+  const bkey = board.map(r => r.join("")).join("") + "|" + (over ? 1 : 0) + "|" + winCells.length + "|" + (lastMove ? lastMove.join(",") : "") + "|" + color1 + "|" + color2;  // colours too — a mid-game colour change must repaint the board
   if (bkey === lastBoardKey) return;
   lastBoardKey = bkey;
   const b = $("board"); b.innerHTML = "";
+  // One cell pitch: the new disc falls from just above the board, so a
+  // disc landing low travels further than one landing on a tall stack —
+  // a fixed -320px made short falls look wrong and slow.
+  const boardPitch = (b.clientWidth || 364) / 7;
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const cell = document.createElement("button");
     cell.className = "cell"; cell.setAttribute("aria-label", "ستون " + fa(c+1));
@@ -886,6 +1018,12 @@ function render() {
       d.className = "disc" + (lastMove && lastMove[0] === r && lastMove[1] === c ? " new" : "")
         + (winCells.some(([wr,wc]) => wr === r && wc === c) ? " win" : "");
       d.style.cssText = discStyle(COLORS[v === 1 ? color1 : color2]);
+      if (lastMove && lastMove[0] === r && lastMove[1] === c) {
+        d.style.setProperty("--fall", (-(r + 1) * boardPitch) + "px");
+        // The fall is fast but never rushed: a short hop is quick, a
+        // full-height fall gets more time (audit, 2026-11-17).
+        d.style.setProperty("--dropdur", (0.15 + 0.04 * r).toFixed(2) + "s");
+      }
       cell.appendChild(d);
     }
     b.appendChild(cell);
@@ -900,44 +1038,68 @@ function render() {
     nums.appendChild(btn);
   }
 }
+let lastFinishKey = "";  // finish() runs once per game, not every poll
 function finish(winner) {
+  // route() calls this on EVERY 1s poll for a finished game — without
+  // the guard the phone buzzed and confetti rained once a second,
+  // forever (audit, 2026-11-17).
+  const key = (game ? game.id : "local") + ":" + winner;
+  if (key === lastFinishKey) return;
+  lastFinishKey = key;
   const bn = $("banner");
-  if (winner === 0) bn.textContent = "🤝 مساوی شد!";
+  bn.innerHTML = "";
+  const t = document.createElement("div");
+  if (winner === 0) t.textContent = "🤝 مساوی شد!";
   else {
-    bn.textContent = "🏆 برنده: " + (winner === 1 ? p1name : p2name);
+    t.textContent = "🏆 برنده: " + (winner === 1 ? p1name : p2name);
     confetti(); haptic("ok");
   }
+  bn.appendChild(t);
+  // Rematch right in the banner — the old button sat below the fold
+  // at the end of a game (audit, 2026-11-17).
+  const rb = document.createElement("button");
+  rb.className = "bigbtn";
+  rb.textContent = "🔄 بازی دوباره";
+  rb.onclick = doRematch;
+  bn.appendChild(rb);
   bn.classList.add("show"); $("resign").disabled = true; render();
 }
+let dropBusy = false;  // a disc is in flight — no double-tap second disc
 async function drop(col) {
-  if (over) return;
+  if (over || dropBusy) return;
   const row = lowestEmpty(col);
   if (row === -1) { haptic(); return; }
   if (!isTG) return; // two-player game: moves go through the server only
   if (game && game.turn !== me) { haptic(); return; } // not my turn
+  if (turn !== me) { haptic(); return; } // my disc is already in flight
   // Optimistic: the disc lands NOW, on my screen, before the server
   // answers (Mehdi, 2026-11-17 — waiting for the round trip made every
   // drop feel late). The server's answer reconciles the board.
   haptic();
+  dropBusy = true;
   board[row][col] = me; lastMove = [row, col, me]; turn = me === 1 ? 2 : 1;
   render();
   const d = await apiAction({ action: "drop", col, g: gameId });
-  if (d.game) applyGame(d.game);
-  else if (d.error) showNotice(d.error);
+  dropBusy = false;
+  applyReply(d);
 }
-$("rematch").onclick = async () => {
+async function doRematch() {
   if (!isTG) return;
   // Rematch, all inside the Web App: I make the new game id, so I can
   // jump straight to the RPS screen — the bot posts fresh entry cards.
+  // If the opponent already tapped rematch, the server returns THEIR
+  // game instead of making a second one — adopt its id (audit, 2026-11-17).
   const oldId = gameId;
   gameId = newGameId();
   const d = await apiAction({ action: "new", g: oldId, game: gameId });
   board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
   over = false; winCells = []; lastMove = null;
   $("banner").classList.remove("show");
-  if (d.game) applyGame(d.game);
+  if (d.error) showNotice(d.error);
+  if (d.game) { gameId = d.game.id; applyGame(d.game); }
   else { $("rps-sub").textContent = myName() + "، یکی رو انتخاب کن — حریفت تو گوشی خودش انتخاب می‌کنه و بات برنده رو معلوم می‌کنه"; resetRpsScreen(); show("scr-rps"); }
-};
+}
+$("rematch").onclick = doRematch;
 $("change-setup").onclick = () => { setupOpen = true; show("scr-setup"); };
 $("setup-back-game").onclick = () => { setupOpen = false; route(); };
 $("setup-home").onclick = () => goHome();
@@ -981,8 +1143,7 @@ async function sendEmoji(e) {
   showEmoji(me, e);
   haptic();
   const d = await apiAction({ action: "emoji", emoji: e, g: gameId });
-  if (d.game) applyGame(d.game);
-  else if (d.error) showNotice(d.error);
+  applyReply(d);
 }
 
 let resignArm = null;
@@ -996,8 +1157,7 @@ $("resign").onclick = async () => {
   clearTimeout(resignArm); resignArm = null;
   $("resign").textContent = "🏳️ تسلیم";
   const d = await apiAction({ action: "resign", g: gameId });
-  if (d.game) applyGame(d.game);
-  else if (d.error) showNotice(d.error);
+  applyReply(d);
 };
 
 /* Init: the entry button opens the right screen for the current phase.
