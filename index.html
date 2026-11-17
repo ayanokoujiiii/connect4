@@ -347,6 +347,7 @@
       <div class="hist" id="history-list"><div class="empty">هنوز بازی‌ای تموم نشده.</div></div>
     </div>
     <div class="hint" id="home-hint">همه‌چیز همین‌جا تو صفحه انجام می‌شه — رنگ، سنگ‌کاغذقیچی و خود بازی.</div>
+    <div class="hint" id="ver">نسخهٔ ؟</div>
   </div>
 
   <!-- ============ INVITE: share the link from inside the Web App ============ -->
@@ -548,6 +549,26 @@ let waitingMode = null;     // "stranger" | "challenge" | null
 let board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
 let turn = 1, over = false, winCells = [], lastMove = null;
 let pollTimer = null;
+$("ver").textContent = "نسخهٔ " + (params.get("v") ? fa(params.get("v")) : "؟");
+
+/* The definitive stale-version fix (Mehdi, 2026-11-17 — "یه راه حل
+   قطعی پیدا کن"): the page can sit on an old release all day while
+   new ones deploy, because Telegram caches it per URL and an open
+   Web App never reloads itself. So the page now watches the version
+   the server reports on every poll: if it differs from the ?v= this
+   page was loaded with, it navigates itself to the same URL with the
+   new ?v= — one automatic reload, the game resumes from the URL,
+   and from then on updates are automatic. Runs at most once per
+   page load, so it can never loop. */
+let updateTried = false;
+function checkClientVersion(d) {
+  if (!d || !d.client_version || updateTried) return;
+  if (d.client_version === (params.get("v") || "")) return;
+  updateTried = true;
+  const sp = new URLSearchParams(location.search);
+  sp.set("v", d.client_version);
+  location.href = location.pathname + "?" + sp.toString();
+}
 
 /* First paint from the URL snapshot (the entry card carries the board),
    so the page is never blank before the first API answer. */
@@ -603,6 +624,7 @@ async function refreshGame() {
   const seq = pollGen;  // a navigation while we wait discards this answer
   const d = await apiCall("/api/game", gameId ? { g: gameId } : {});
   if (seq !== pollGen) return false;
+  checkClientVersion(d);
   if (d.ok && d.game) { gameId = d.game.id; applyGame(d.game); showNotice(null); return true; }
   if (d.error && !d.error.startsWith("ارتباط")) showNotice(d.error);
   else if (!d.ok) showNotice(d.error || null);
@@ -612,6 +634,7 @@ async function refreshHome() {
   const seq = pollGen;
   const d = await apiCall("/api/home", {});
   if (seq !== pollGen) return false;
+  checkClientVersion(d);
   if (d.ok && d.home) { home = d.home; renderHome(); showNotice(null); }
   if (d.error) showNotice(d.error);
   // A friend can join while the challenger sits on home — refresh the
