@@ -535,6 +535,7 @@ let myEmojiPending = false;  // I already showed mine — don't replay it
 let emojiCooldownUntil = 0;
 let setupAppliedFor = "";  // the game my setup screen was built for
 let lastResignGame = "";    // game id the resign button was reset for
+let rpsGameId = "";         // game id the RPS screen was last reset for
 let home = null;            // last home data from the API
 let openGame = null;        // my latest open game, if any (continue button)
 let waitingMode = null;     // "stranger" | "challenge" | null
@@ -704,6 +705,11 @@ function route() {
   }
   if (game.status === "rps") {
     waitingMode = null;
+    // Fresh game (e.g. after rematch): the RPS buttons may still be
+    // disabled from the LAST game, and the tie check below would read
+    // that as a tie and show "مساوی شد" before anyone threw
+    // (Mehdi, 2026-11-17). Reset the screen once per game id.
+    if (rpsGameId !== game.id) { rpsGameId = game.id; resetRpsScreen(); }
     // Tie recovery: if my throw was cleared (a tie empties rps_done) but
     // the buttons stayed disabled, I am stuck on "waiting for opponent"
     // forever — re-enable them and say so (Mehdi's game 1a49bee4, 2026-11-16).
@@ -711,6 +717,11 @@ function route() {
     if (!iThrew && document.querySelector("#rps-row .rps:disabled")) {
       $("rps-picked").textContent = "🤝 مساوی شد — دوباره انتخاب کن!";
       document.querySelectorAll("#rps-row .rps").forEach(b => { b.classList.remove("picked"); b.disabled = false; });
+    } else if (iThrew) {
+      // Reopened after throwing (or the poll beat the click handler):
+      // my throw is already in, so wait — don't let me throw twice.
+      $("rps-picked").textContent = "✓ انتخاب تو ثبت شد — منتظر حریف…";
+      document.querySelectorAll("#rps-row .rps").forEach(b => b.disabled = true);
     }
     $("rps-sub").textContent = myName() + "، یکی رو انتخاب کن — حریفت تو گوشی خودش انتخاب می‌کنه و بات برنده رو معلوم می‌کنه";
     updateRpsStatus();
