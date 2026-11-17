@@ -111,8 +111,7 @@
     transition: border-color .25s ease, background .25s ease, box-shadow .25s ease;
   }
   .player b { color: var(--gold); font-size: 19px; }
-  .player.active { border-color: #ffd23e; background: rgba(255,210,62,.14); animation: activeGlow 1.2s ease-in-out infinite alternate; }
-  @keyframes activeGlow { from { box-shadow: 0 0 8px rgba(255,210,62,.18); } to { box-shadow: 0 0 26px rgba(255,210,62,.55); } }
+  .player.active { border-color: #ffd23e; background: rgba(255,210,62,.14); box-shadow: 0 0 18px rgba(255,210,62,.35); }
   .player.active .pdot { animation: dotPulse 1s ease-in-out infinite alternate; }
   @keyframes dotPulse { from { transform: scale(1); } to { transform: scale(1.18); } }
   .player small { display: block; font-size: 13px; color: #cfc8ff; font-weight: 400; }
@@ -150,13 +149,8 @@
       inset 0 2px 0 rgba(255,255,255,.3), inset 0 -8px 18px rgba(0,0,0,.4);
     border-bottom: 5px solid rgba(0,0,0,.4);
   }
-  /* Before the first poll the board is empty — show a loading state,
-     never a blank hole (pure CSS: :empty only matches pre-render). */
-  .board:empty { display: flex; align-items: center; justify-content: center; min-height: 280px; }
-  .board:empty::before {
-    content: "⏳ در حال بارگذاری بازی…"; font-size: 17px; font-weight: 700; color: var(--muted);
-    animation: breathe 1.8s ease-in-out infinite;
-  }
+  /* The board is built once at load (buildBoard) and never emptied
+     again, so there is no :empty loading state to show (v5.8). */
   .cell {
     aspect-ratio: 1; border-radius: 50%; background: #0d1440; border: none; padding: 0;
     box-shadow: inset 0 6px 12px rgba(0,0,0,.75), inset 0 -2px 5px rgba(255,255,255,.12); cursor: pointer; position: relative;
@@ -176,18 +170,28 @@
     content: ""; position: absolute; left: 12%; top: 7%; width: 48%; height: 34%;
     border-radius: 50%; background: radial-gradient(ellipse at center, rgba(255,255,255,.9), rgba(255,255,255,0) 70%);
   }
-  .disc.new { animation: drop var(--dropdur, .45s) cubic-bezier(.45,.05,.35,1); }
+  .disc.pending { opacity: .45; }  /* my disc, sent, not yet confirmed */
+  .disc.ghost { opacity: .35; }    /* preview while I press/slide a column */
+  .cell.ghost-col { background: rgba(255,210,62,.18); }
+  .disc.falling { animation: drop var(--dropdur, .45s) cubic-bezier(.5,.02,.75,.35); }
   @keyframes drop {
+    /* Accelerating fall: a falling object speeds up — the old ease
+       DECELERATED, so drops read as floaty. Squash at 72%, rebound
+       at 86% (animation audit, 2026-11-17). */
     0% { transform: translateY(var(--fall, -320px)) scale(1); opacity: .55; }
-    68% { transform: translateY(0) scale(1.08, .92); opacity: 1; }
-    82% { transform: translateY(-7%) scale(.97, 1.04); }
+    72% { transform: translateY(0) scale(1.08, .92); opacity: 1; }
+    86% { transform: translateY(-7%) scale(.97, 1.04); }
     100% { transform: translateY(0) scale(1); opacity: 1; }
   }
   .disc.win { outline: 4px solid #ffd23e; outline-offset: 2px; animation: winpulse .55s ease-in-out infinite alternate; box-shadow: 0 0 22px 4px rgba(255,210,62,.55), inset -3px -6px 9px rgba(0,0,0,.35), inset 3px 6px 9px rgba(255,255,255,.5); }
-  @keyframes winpulse { from { transform: scale(1); filter: brightness(1); } to { transform: scale(1.16); filter: brightness(1.3); } }
+  /* The win pulse animates ONLY box-shadow — never transform (that
+     would steal the fall's transform on a winning disc, F5) and never
+     filter (a paint animation on every frame). A disc that is both
+     falling and winning gets both animations, composed. */
+  .disc.falling.win { animation: drop var(--dropdur, .45s) cubic-bezier(.5,.02,.75,.35), winpulse .55s ease-in-out infinite alternate; }
+  @keyframes winpulse { from { box-shadow: 0 0 14px 2px rgba(255,210,62,.35), inset -3px -6px 9px rgba(0,0,0,.35), inset 3px 6px 9px rgba(255,255,255,.5); } to { box-shadow: 0 0 30px 8px rgba(255,210,62,.7), inset -3px -6px 9px rgba(0,0,0,.35), inset 3px 6px 9px rgba(255,255,255,.5); } }
   /* NUMBERS — BELOW the board, big */
   .colnums { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
-  .colnums:empty { min-height: 62px; }  /* no layout jump while the numbers load */
   .colnums button {
     font-family: inherit; font-size: 30px; font-weight: 900; color: #fff; height: 62px;
     background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.08));
@@ -200,12 +204,17 @@
   .colnums button:disabled { opacity: .35; }
   .row { display: flex; gap: 10px; margin-top: 12px; }
   .row .bigbtn { margin-top: 0; }
+  #scr-game { position: relative; }  /* the win banner overlays it */
   .banner {
     display: none; text-align: center; font-size: 24px; font-weight: 900; color: #241a00;
     background: linear-gradient(180deg, #ffe680, #ffc700); border-radius: 18px; padding: 14px; margin-bottom: 12px;
     box-shadow: 0 10px 26px rgba(0,0,0,.45), 0 0 30px rgba(255,210,62,.35);
   }
-  .banner.show { display: block; animation: pop .35s ease; }
+  /* An overlay, not a block in the flow: the old banner sat above the
+     board and pushed it down ~100px the moment the game ended — the
+     same layout-shift class as the turn-banner bug (v5.8). Now it
+     floats over the score area and the winning board stays put. */
+  .banner.show { display: block; animation: pop .35s ease; position: absolute; left: 0; right: 0; top: 0; z-index: 5; }
   @keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   .hint { text-align: center; color: #cfc8ff; font-size: 14px; margin-top: 12px; line-height: 1.9; }
   .confetti { position: fixed; top: -40px; font-size: 26px; animation: fall 2.6s linear forwards; pointer-events: none; z-index: 9; }
@@ -549,6 +558,16 @@ let waitingMode = null;     // "stranger" | "challenge" | null
 let board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
 let turn = 1, over = false, winCells = [], lastMove = null;
 let pollTimer = null;
+let appliedMoveNo = -1;   // highest move_no whose board is on screen —
+                          // a poll answer older than this is ignored (v5.8)
+let lastAnimatedMoveNo = -1;  // move_no whose lastMove disc already fell
+let pendingMove = null;   // {row, col, slot, baseMoveNo} — my disc, sent,
+                          // not yet confirmed by the server (v5.8)
+let ghostCol = -1;        // column with the ghost preview, -1 = none
+let ghostCell = null;     // the cell holding the ghost disc
+let boardPitch = 52;      // cached cell pitch (px), measured when visible
+const cellEls = [];       // cellEls[r][c] — built once, never rebuilt (v5.8)
+const numBtns = [];       // numBtns[c]
 $("ver").textContent = "نسخهٔ " + (params.get("v") ? fa(params.get("v")) : "؟");
 
 /* The definitive stale-version fix (Mehdi, 2026-11-17 — "یه راه حل
@@ -624,7 +643,9 @@ async function refreshGame() {
   const seq = pollGen;  // a navigation while we wait discards this answer
   const d = await apiCall("/api/game", gameId ? { g: gameId } : {});
   if (seq !== pollGen) return false;
-  checkClientVersion(d);
+  // Never reload mid-drop: the v5.7.5 self-update once fired during a
+  // tap and the page reloaded under the falling disc (v5.8).
+  if (!dropBusy && !pendingMove) checkClientVersion(d);
   if (d.ok && d.game) { gameId = d.game.id; applyGame(d.game); showNotice(null); return true; }
   if (d.error && !d.error.startsWith("ارتباط")) showNotice(d.error);
   else if (!d.ok) showNotice(d.error || null);
@@ -634,7 +655,7 @@ async function refreshHome() {
   const seq = pollGen;
   const d = await apiCall("/api/home", {});
   if (seq !== pollGen) return false;
-  checkClientVersion(d);
+  if (!dropBusy && !pendingMove) checkClientVersion(d);
   if (d.ok && d.home) { home = d.home; renderHome(); showNotice(null); }
   if (d.error) showNotice(d.error);
   // A friend can join while the challenger sits on home — refresh the
@@ -668,6 +689,17 @@ function stopPoll() { pollGen++; if (pollTimer) { clearTimeout(pollTimer); pollT
 
 /* ---------- game state -> screen ---------- */
 function applyGame(g) {
+  // Order states by the server's monotonic move_no: a poll that was in
+  // flight when I tapped can return the PRE-drop board AFTER my
+  // optimistic disc is on screen — applying it wholesale wiped my disc
+  // and re-fell the opponent's, then the drop reply re-fell mine (the
+  // "move repeated twice", v5.8). A state older than the board on
+  // screen is ignored entirely; a state at the same move_no still
+  // carries fresh meta (RPS progress, colours, emoji), so only the
+  // board update itself is gated.
+  const mno = (typeof g.move_no === "number") ? g.move_no : -1;
+  if (mno !== -1 && mno < appliedMoveNo) return;
+  if (game && g.id !== game.id) resetBoardState();  // rematch / new game
   game = g;
   if (g.id !== lastResignGame) {  // a new game: the resign button resets
     lastResignGame = g.id;
@@ -690,10 +722,18 @@ function applyGame(g) {
   color2 = (g.players["2"] && g.players["2"].color) || "red";
   score1 = g.score["1"] || 0; score2 = g.score["2"] || 0;
   turn = g.turn;
-  board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
-  const bs = g.board || "";
-  if (bs.length === 42)
-    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) board[r][c] = +bs[r*COLS+c];
+  if (mno === -1 || mno > appliedMoveNo) {
+    appliedMoveNo = Math.max(appliedMoveNo, mno);
+    board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+    const bs = g.board || "";
+    if (bs.length === 42)
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) board[r][c] = +bs[r*COLS+c];
+    // The server's board now includes my pending disc (its move_no
+    // advanced past the one I tapped at): promote the ghost to a real
+    // disc. If the server put it a row higher than I guessed, syncBoard
+    // moves it there — a ghost snapping to the real disc, not a jump.
+    if (pendingMove && mno > pendingMove.baseMoveNo) pendingMove = null;
+  }
   over = g.status === "finished";
   winCells = g.win_cells || [];
   lastMove = g.last_move;
@@ -1044,8 +1084,162 @@ function confetti() {
     }
   });
 }
-let lastBoardKey = "";
-function render() {
+/* ---------- the board: built ONCE, diffed in place (v5.8) ----------
+   render() used to destroy and recreate all 42 cells + 7 number
+   buttons on every board change (innerHTML = ""): the last disc's
+   fall replayed on every rebuild, taps were eaten mid-tap when the
+   button under the finger vanished, and a stale poll answer could
+   rewind the board. Now the DOM is built once by buildBoard() and
+   syncBoard() only touches cells whose disc actually changed — a
+   disc element is created once and never recreated, so a re-animation
+   is impossible by construction. */
+function buildBoard() {
+  const b = $("board");
+  for (let r = 0; r < ROWS; r++) {
+    cellEls[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement("button");
+      cell.className = "cell";
+      cell.setAttribute("aria-label", "ستون " + fa(c + 1));
+      b.appendChild(cell);
+      cellEls[r][c] = cell;
+    }
+  }
+  const nums = $("colnums");
+  for (let c = 0; c < COLS; c++) {
+    const btn = document.createElement("button");
+    btn.textContent = String(c + 1);  // Latin digits, like the card
+    btn.setAttribute("aria-label", "انداختن در ستون " + fa(c + 1));
+    btn.onclick = () => drop(c);
+    nums.appendChild(btn);
+    numBtns[c] = btn;
+  }
+  // Selection on the board itself: press anywhere in a column to
+  // preview (ghost disc + highlight), slide to correct, release to
+  // drop — one gesture, no confirm step (Mehdi's rule). The number
+  // buttons stay as the immediate-drop secondary path. The column is
+  // read from the pointer's X, so sliding across columns just works.
+  const colAt = e => {
+    const rect = b.getBoundingClientRect();
+    if (!rect.width) return -1;
+    return Math.max(0, Math.min(COLS - 1, Math.floor((e.clientX - rect.left) / (rect.width / COLS))));
+  };
+  b.addEventListener("pointerdown", e => {
+    const col = colAt(e);
+    if (col < 0) return;
+    try { b.setPointerCapture(e.pointerId); } catch (err) {}
+    showGhost(col);
+  });
+  b.addEventListener("pointermove", e => { if (ghostCol !== -1) showGhost(colAt(e)); });
+  b.addEventListener("pointerup", e => {
+    const col = colAt(e);
+    hideGhost();
+    if (col >= 0) drop(col);
+  });
+  b.addEventListener("pointercancel", hideGhost);
+  b.addEventListener("pointerleave", hideGhost);
+}
+buildBoard();
+function showGhost(col) {
+  hideGhost();
+  if (col < 0 || col >= COLS) return;
+  if (over || turn !== me || dropBusy || pendingMove) return;
+  const row = lowestEmpty(col);
+  if (row === -1) return;  // full column: nothing to preview
+  ghostCol = col;
+  for (let r = 0; r < ROWS; r++) cellEls[r][col].classList.add("ghost-col");
+  const d = document.createElement("div");
+  d.className = "disc ghost";
+  d.style.cssText = discStyle(COLORS[me === 1 ? color1 : color2]);
+  cellEls[row][col].appendChild(d);
+  ghostCell = cellEls[row][col];
+}
+function hideGhost() {
+  if (ghostCol === -1) return;
+  for (let r = 0; r < ROWS; r++) cellEls[r][ghostCol].classList.remove("ghost-col");
+  if (ghostCell) { const g = ghostCell.querySelector(".disc.ghost"); if (g) g.remove(); }
+  ghostCol = -1; ghostCell = null;
+}
+function animateFall(d, r, c) {
+  // A disc falls exactly once per move_no: the class comes off on
+  // animationend, and the move_no guard stops any later sync from
+  // replaying it (the old `.new` class never came off, so every
+  // rebuild re-fell the last disc — the "jump" while waiting).
+  if (lastAnimatedMoveNo === appliedMoveNo) return;
+  if (!$("scr-game").classList.contains("on")) return;  // hidden: just place it
+  lastAnimatedMoveNo = appliedMoveNo;
+  const b = $("board");
+  let fall = (r + 1) * boardPitch;
+  try {
+    const cr = cellEls[r][c].getBoundingClientRect();
+    const br = b.getBoundingClientRect();
+    if (cr.height && br.height) fall = cr.bottom - br.top;
+  } catch (err) {}
+  d.style.setProperty("--fall", (-fall) + "px");
+  // Accelerating fall (a falling object speeds up — the old ease
+  // DECELERATED, so drops read as floaty) and a duration that grows
+  // with the distance actually travelled (audit, 2026-11-17).
+  d.style.setProperty("--dropdur", (0.16 + 0.055 * r).toFixed(2) + "s");
+  d.classList.add("falling");
+  d.addEventListener("animationend", () => d.classList.remove("falling"), { once: true });
+}
+function syncBoard() {
+  const b = $("board");
+  // Measure the pitch from live geometry while visible — the old code
+  // read clientWidth while the screen was still hidden and fell back
+  // to a wrong 364/7 guess (on a phone ~2px/row off, +12px on the
+  // longest fall).
+  if (b.clientWidth) boardPitch = b.clientWidth / 7;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const cell = cellEls[r][c];
+    const v = board[r][c];  // server board
+    const isPending = !!(pendingMove && pendingMove.row === r && pendingMove.col === c && !v);
+    const disc = cell.querySelector(".disc:not(.ghost)");
+    if (!v && !isPending) { if (disc) disc.remove(); continue; }
+    const colorKey = v === 1 ? color1 : (v === 2 ? color2 : (pendingMove.slot === 1 ? color1 : color2));
+    const col = COLORS[colorKey];
+    const bg = `radial-gradient(circle at 32% 28%, ${col.hi}, ${col.main} 58%, ${col.dark})`;
+    const isWin = winCells.some(([wr, wc]) => wr === r && wc === c);
+    const isLast = lastMove && lastMove[0] === r && lastMove[1] === c;
+    if (!disc) {
+      const d = document.createElement("div");
+      d.className = "disc" + (isPending ? " pending" : "") + (isWin ? " win" : "");
+      d.style.background = bg;
+      cell.appendChild(d);
+      if (!isPending && isLast) animateFall(d, r, c);
+    } else {
+      // Reuse the node in place: a mid-game colour change repaints
+      // it, a confirmed pending disc stops being a ghost, a win
+      // tints it — nothing is ever destroyed and re-created.
+      disc.style.background = bg;
+      disc.classList.toggle("pending", isPending);
+      disc.classList.toggle("win", isWin);
+      if (!isPending && isLast) animateFall(disc, r, c);
+    }
+  }
+  // A button that looks live must never swallow a tap silently: the
+  // numbers disable when the game is over, the column is full, it
+  // isn't my turn, or a disc is in flight (v5.8).
+  for (let c = 0; c < COLS; c++) {
+    numBtns[c].disabled = over || lowestEmpty(c) === -1 || turn !== me || dropBusy || !!pendingMove;
+  }
+}
+function resetBoardState() {
+  appliedMoveNo = -1;
+  lastAnimatedMoveNo = -1;
+  pendingMove = null;
+  hideGhost();
+}
+function resetBoard() {
+  resetBoardState();
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const d = cellEls[r][c].querySelector(".disc:not(.ghost)");
+    if (d) d.remove();
+  }
+  board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+  over = false; winCells = []; lastMove = null;
+}
+function renderMeta() {
   $("p1name").textContent = p1name; $("p2name").textContent = p2name;
   $("s1").textContent = fa(score1); $("s2").textContent = fa(score2);
   $("pdot1").style.cssText = discStyle(COLORS[color1]);
@@ -1058,49 +1252,9 @@ function render() {
   // A fresh game must never show the previous game's win banner (the
   // opponent never clicks rematch, so only the poll can clear it).
   if (!over) $("banner").classList.remove("show");
-  // The poll rebuilds the board every tick — rebuilding the DOM replayed
-  // the last disc's drop animation each time, so while waiting for the
-  // opponent the discs kept "jumping" (Mehdi, 2026-11-16). Rebuild only
-  // when the board actually changed; a tap on a live button also stops
-  // being eaten by a rebuild mid-tap.
-  const bkey = board.map(r => r.join("")).join("") + "|" + (over ? 1 : 0) + "|" + winCells.length + "|" + (lastMove ? lastMove.join(",") : "") + "|" + color1 + "|" + color2;  // colours too — a mid-game colour change must repaint the board
-  if (bkey === lastBoardKey) return;
-  lastBoardKey = bkey;
-  const b = $("board"); b.innerHTML = "";
-  // One cell pitch: the new disc falls from just above the board, so a
-  // disc landing low travels further than one landing on a tall stack —
-  // a fixed -320px made short falls look wrong and slow.
-  const boardPitch = (b.clientWidth || 364) / 7;
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    const cell = document.createElement("button");
-    cell.className = "cell"; cell.setAttribute("aria-label", "ستون " + fa(c+1));
-    cell.onclick = () => drop(c);
-    const v = board[r][c];
-    if (v) {
-      const d = document.createElement("div");
-      d.className = "disc" + (lastMove && lastMove[0] === r && lastMove[1] === c ? " new" : "")
-        + (winCells.some(([wr,wc]) => wr === r && wc === c) ? " win" : "");
-      d.style.cssText = discStyle(COLORS[v === 1 ? color1 : color2]);
-      if (lastMove && lastMove[0] === r && lastMove[1] === c) {
-        d.style.setProperty("--fall", (-(r + 1) * boardPitch) + "px");
-        // The fall is fast but never rushed: a short hop is quick, a
-        // full-height fall gets more time (audit, 2026-11-17).
-        d.style.setProperty("--dropdur", (0.32 + 0.08 * r).toFixed(2) + "s");
-      }
-      cell.appendChild(d);
-    }
-    b.appendChild(cell);
-  }
-  const nums = $("colnums"); nums.innerHTML = "";
-  for (let c = 0; c < COLS; c++) {
-    const btn = document.createElement("button");
-    btn.textContent = String(c + 1);  // Latin digits, like the card
-    btn.disabled = over || lowestEmpty(c) === -1;
-    btn.setAttribute("aria-label", "انداختن در ستون " + fa(c+1));
-    btn.onclick = () => drop(c);
-    nums.appendChild(btn);
-  }
 }
+// render() stays as the single call-site name: meta + board diff.
+function render() { renderMeta(); syncBoard(); }
 let lastFinishKey = "";  // finish() runs once per game, not every poll
 function finish(winner) {
   // route() calls this on EVERY 1s poll for a finished game — without
@@ -1129,22 +1283,35 @@ function finish(winner) {
 }
 let dropBusy = false;  // a disc is in flight — no double-tap second disc
 async function drop(col) {
-  if (over || dropBusy) return;
+  if (over || dropBusy || pendingMove) return;
   const row = lowestEmpty(col);
   if (row === -1) { haptic(); return; }
   if (!isTG) return; // two-player game: moves go through the server only
   if (game && game.turn !== me) { haptic(); return; } // not my turn
   if (turn !== me) { haptic(); return; } // my disc is already in flight
-  // Optimistic: the disc lands NOW, on my screen, before the server
-  // answers (Mehdi, 2026-11-17 — waiting for the round trip made every
-  // drop feel late). The server's answer reconciles the board.
+  // Optimistic, but PROVISIONAL: the disc shows as a ghost (no fall
+  // animation) until the server confirms the real row — the server
+  // computes its own lowest row, and if the opponent dropped in this
+  // column a beat before me, my disc lands one row higher than I
+  // guessed. A ghost that snaps to the real disc reads as a
+  // correction, not a jump (v5.8).
   haptic();
   dropBusy = true;
-  board[row][col] = me; lastMove = [row, col, me]; turn = me === 1 ? 2 : 1;
-  render();
-  const d = await apiAction({ action: "drop", col, g: gameId });
-  dropBusy = false;
-  applyReply(d);
+  hideGhost();
+  pendingMove = { row, col, slot: me, baseMoveNo: appliedMoveNo };
+  lastMove = [row, col, me];
+  turn = me === 1 ? 2 : 1;
+  try {
+    syncBoard();
+    const d = await apiAction({ action: "drop", col, g: gameId });
+    applyReply(d);  // success: applyGame confirms (move_no advances)
+    // Failure with no game (network down / server error): the
+    // provisional disc comes off at once — it must not sit as a
+    // phantom until the next poll (v5.8).
+    if (!d.ok || !d.game) { pendingMove = null; syncBoard(); }
+  } finally {
+    dropBusy = false;  // never stick, even if a render throws (v5.8)
+  }
 }
 async function doRematch() {
   if (!isTG) return;
@@ -1155,8 +1322,7 @@ async function doRematch() {
   const oldId = gameId;
   gameId = newGameId();
   const d = await apiAction({ action: "new", g: oldId, game: gameId });
-  board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
-  over = false; winCells = []; lastMove = null;
+  resetBoard();
   $("banner").classList.remove("show");
   if (d.error) showNotice(d.error);
   if (d.game) { gameId = d.game.id; applyGame(d.game); }
