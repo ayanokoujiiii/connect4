@@ -127,12 +127,16 @@
        lines, pushing the whole board down and back on EVERY turn
        change (Mehdi, 2026-11-17 — "صفحه مهره‌ها تکون می‌خوره").
        v5.7.1's min-height alone wasn't enough: at 20px the real
-       two-line height (~68px) still exceeded it, so the banner kept
-       growing a few pixels on bot turns. v5.7.2 shrinks the font to
-       17px (his fix — the bot's name stays, only the font shrinks)
-       with an explicit 1.5 line-height, so two lines are 51px and the
-       box is pinned at min-height whatever the turn text says. */
-    min-height: 64px; display: flex; align-items: center; justify-content: center;
+       two-line height (~68px) still exceeded it. v5.7.2 shrank the
+       font to 17px — but STILL shook, because this page is
+       border-box (line 10: `* { box-sizing: border-box }`), so
+       min-height: 64px left only 36px of content and two 17px lines
+       (51px) still overflowed it by ~15px (Mehdi's screenshots,
+       2026-11-17 09:57 — the board visibly sits lower on bot turns).
+       v5.7.4 uses a FIXED height: 88px border-box = 60px of content,
+       which fits two lines (51px) with room to spare — the box can
+       never change size now, whatever the turn text says. */
+    height: 88px; display: flex; align-items: center; justify-content: center;
   }
   .turn::before {
     content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%;
@@ -536,6 +540,8 @@ let emojiCooldownUntil = 0;
 let setupAppliedFor = "";  // the game my setup screen was built for
 let lastResignGame = "";    // game id the resign button was reset for
 let rpsGameId = "";         // game id the RPS screen was last reset for
+let rpsPending = false;    // my RPS throw is in flight — the poll must
+                           // NOT read the pre-throw state as a tie
 let home = null;            // last home data from the API
 let openGame = null;        // my latest open game, if any (continue button)
 let waitingMode = null;     // "stranger" | "challenge" | null
@@ -714,7 +720,7 @@ function route() {
     // the buttons stayed disabled, I am stuck on "waiting for opponent"
     // forever — re-enable them and say so (Mehdi's game 1a49bee4, 2026-11-16).
     const iThrew = (game.rps_done || []).includes(me);
-    if (!iThrew && document.querySelector("#rps-row .rps:disabled")) {
+    if (!rpsPending && !iThrew && document.querySelector("#rps-row .rps:disabled")) {
       $("rps-picked").textContent = "🤝 مساوی شد — دوباره انتخاب کن!";
       document.querySelectorAll("#rps-row .rps").forEach(b => { b.classList.remove("picked"); b.disabled = false; });
     } else if (iThrew) {
@@ -966,7 +972,16 @@ document.querySelectorAll("#rps-row .rps").forEach(btn => {
     // two throws (the server overwrites, but the tap feels dead).
     document.querySelectorAll("#rps-row .rps").forEach(b => { b.disabled = true; b.classList.remove("picked"); });
     btn.classList.add("picked"); haptic();
-    const d = await apiAction({ action: "rps", choice: v, g: gameId });
+    // My throw is in flight: while it travels, the 1s poll can still
+    // see the pre-throw state (rps_done without me) and the disabled
+    // buttons — and the tie check in route() would flash "مساوی شد"
+    // a split second after every tap, even when I won the throw
+    // (Mehdi, 2026-11-17 — "بعد انتخاب خیلی سریع نوشت مساوی شد").
+    // The tie check stays blind until this reply lands.
+    rpsPending = true;
+    let d = null;
+    try { d = await apiAction({ action: "rps", choice: v, g: gameId }); }
+    finally { rpsPending = false; }
     if (d.error) showNotice(d.error);
     if (d.game) applyGame(d.game);
     if (d.game && d.game.status === "rps" && !(d.game.rps_done || []).includes(me)) {
