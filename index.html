@@ -119,14 +119,19 @@
   .pdot { width: 34px; height: 34px; border-radius: 50%; flex: none;
     box-shadow: inset -2px -4px 7px rgba(0,0,0,.35), inset 2px 4px 7px rgba(255,255,255,.5), 0 3px 8px rgba(0,0,0,.5); }
   .turn {
-    text-align: center; font-size: 20px; font-weight: 900; border-radius: 16px; padding: 12px;
+    text-align: center; font-size: 17px; font-weight: 900; border-radius: 16px; padding: 12px;
     background: rgba(255,210,62,.16); border: 2px solid #ffd23e; margin-bottom: 12px;
-    box-shadow: 0 0 18px rgba(255,210,62,.12);
+    box-shadow: 0 0 18px rgba(255,210,62,.12); line-height: 1.5;
     /* Fixed two-line height, flex-centred: the turn text grows on the
        bot's turn ("— 🤖 داره فکر می‌کنه…") and used to wrap to two
        lines, pushing the whole board down and back on EVERY turn
        change (Mehdi, 2026-11-17 — "صفحه مهره‌ها تکون می‌خوره").
-       The board must never move, whatever the turn text says. */
+       v5.7.1's min-height alone wasn't enough: at 20px the real
+       two-line height (~68px) still exceeded it, so the banner kept
+       growing a few pixels on bot turns. v5.7.2 shrinks the font to
+       17px (his fix — the bot's name stays, only the font shrinks)
+       with an explicit 1.5 line-height, so two lines are 51px and the
+       box is pinned at min-height whatever the turn text says. */
     min-height: 64px; display: flex; align-items: center; justify-content: center;
   }
   .turn::before {
