@@ -1119,24 +1119,49 @@ function buildBoard() {
   // drop — one gesture, no confirm step (Mehdi's rule). The number
   // buttons stay as the immediate-drop secondary path. The column is
   // read from the pointer's X, so sliding across columns just works.
+  // The column under the pointer, from the board's REAL grid geometry:
+  // 10px padding each side + 6px gaps between the 1fr cells (the CSS
+  // values — the old width/7 slices ignored both, so the computed
+  // boundaries sat up to 5px off the real gap centres and a tap near
+  // an edge resolved to the neighbouring column). Boundaries fall in
+  // the middle of each gap, so a tap in a gap goes to the nearer cell.
   const colAt = e => {
     const rect = b.getBoundingClientRect();
     if (!rect.width) return -1;
-    return Math.max(0, Math.min(COLS - 1, Math.floor((e.clientX - rect.left) / (rect.width / COLS))));
+    const pad = 10, gap = 6;
+    const pitch = (rect.width - pad * 2 - gap * (COLS - 1)) / COLS + gap;
+    const x = e.clientX - rect.left - pad + gap / 2;
+    return Math.max(0, Math.min(COLS - 1, Math.floor(x / pitch)));
   };
+  // A tap's target is where the finger LANDED, not where it lifted:
+  // press and release routinely differ by a few px (lift drift +
+  // touch jitter), and the old code committed the RELEASE column, so
+  // a tap near a boundary dropped in the neighbouring column — it
+  // read as the game picking another column by itself. Only a
+  // deliberate slide (moved more than half a cell from the press
+  // point) moves the target to the release column; sliding off the
+  // board cancels the gesture instead of dropping an edge column.
+  let pressCol = -1, pressX = 0;
   b.addEventListener("pointerdown", e => {
     const col = colAt(e);
     if (col < 0) return;
+    pressCol = col; pressX = e.clientX;
     try { b.setPointerCapture(e.pointerId); } catch (err) {}
     showGhost(col);
   });
   b.addEventListener("pointermove", e => { if (ghostCol !== -1) showGhost(colAt(e)); });
   b.addEventListener("pointerup", e => {
-    const col = colAt(e);
+    const relCol = colAt(e);
     hideGhost();
+    const rect = b.getBoundingClientRect();
+    const offBoard = e.clientX < rect.left - 8 || e.clientX > rect.right + 8 ||
+      e.clientY < rect.top - 8 || e.clientY > rect.bottom + 8;
+    const col = (pressCol >= 0 && !offBoard && Math.abs(e.clientX - pressX) < (rect.width / COLS) / 2)
+      ? pressCol : (offBoard ? -1 : relCol);
+    pressCol = -1;
     if (col >= 0) drop(col);
   });
-  b.addEventListener("pointercancel", hideGhost);
+  b.addEventListener("pointercancel", () => { pressCol = -1; hideGhost(); });
   b.addEventListener("pointerleave", hideGhost);
 }
 buildBoard();
