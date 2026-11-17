@@ -1121,16 +1121,21 @@ function buildBoard() {
   // read from the pointer's X, so sliding across columns just works.
   // The column under the pointer, from the board's REAL grid geometry:
   // 10px padding each side + 6px gaps between the 1fr cells (the CSS
-  // values — the old width/7 slices ignored both, so the computed
-  // boundaries sat up to 5px off the real gap centres and a tap near
-  // an edge resolved to the neighbouring column). Boundaries fall in
-  // the middle of each gap, so a tap in a gap goes to the nearer cell.
+  // values). And — the bug that survived v5.8.2 — measured from the
+  // RIGHT edge: this page is dir="rtl", so the grid lays its first
+  // column (logical 0, under number "1") at the RIGHT, while clientX
+  // grows left-to-right. Measuring from rect.left mirrored every tap:
+  // the left edge dropped on the right edge and vice versa (the
+  // centre column was unaffected, and the number buttons were never
+  // hit because they drop by index, not by geometry). Boundaries fall
+  // in the middle of each gap, so a tap in a gap goes to the nearer
+  // cell.
   const colAt = e => {
     const rect = b.getBoundingClientRect();
     if (!rect.width) return -1;
     const pad = 10, gap = 6;
     const pitch = (rect.width - pad * 2 - gap * (COLS - 1)) / COLS + gap;
-    const x = e.clientX - rect.left - pad + gap / 2;
+    const x = rect.right - e.clientX - pad + gap / 2;
     return Math.max(0, Math.min(COLS - 1, Math.floor(x / pitch)));
   };
   // A tap's target is where the finger LANDED, not where it lifted:
